@@ -3,7 +3,7 @@ import { User } from "../../domain/aggregates/user.js";
 import { EmailAlreadyInUseError } from "../../domain/errors/email-already-in-use.error.js";
 import type { UserRepository } from "../../domain/repositories/user-repository.js";
 import { Email } from "../../domain/value-objects/email.js";
-import type { TokenGenerator } from "../ports/token-generator.js";
+import type { TokenGenerator } from "../ports/providers/token-generator.js";
 
 export interface SignUpInput {
   name: string;
