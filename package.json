@@ -1,0 +1,43 @@
+{
+  "name": "google-drive-node-clone",
+  "version": "1.0.0",
+  "description": "Clone das funcionalidades do Google Drive em Node.js com TypeScript e Prisma ORM.",
+  "type": "module",
+  "main": "dist/index.js",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+    "db:push": "prisma db push",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gftf2011/google-drive-node-clone.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/gftf2011/google-drive-node-clone/issues"
+  },
+  "homepage": "https://github.com/gftf2011/google-drive-node-clone#readme",
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "prisma": "^7.10.0",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "^7.10.0",
+    "dotenv": "^18.0.4"
+  }
+}
