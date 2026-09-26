@@ -11,6 +11,9 @@ export interface UserRepository {
   /** Indica se já existe um usuário com o e-mail informado (já normalizado). */
   existsByEmail(email: string): Promise<boolean>;
 
+  /** Recupera um usuário pelo e-mail (já normalizado), ou `null` se não existir. */
+  findByEmail(email: string): Promise<User | null>;
+
   /** Persiste um usuário (novo ou já existente). */
   save(user: User): Promise<void>;
 }
