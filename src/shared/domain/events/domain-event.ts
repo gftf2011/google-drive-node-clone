@@ -6,6 +6,8 @@
  * persistir com sucesso.
  */
 export interface DomainEvent {
+  /** Nome estável do evento, usado para rotear handlers (ex.: "users.user-created"). */
+  readonly eventName: string;
   /** Quando o fato ocorreu. */
   readonly occurredAt: Date;
   /** Identidade do agregado que originou o evento. */

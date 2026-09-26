@@ -9,6 +9,9 @@ import type { UserId } from "../value-objects/user-id.js";
  * este evento. O domínio `users` não conhece esse efeito; apenas anuncia o fato.
  */
 export class UserCreated implements DomainEvent {
+  static readonly EVENT_NAME = "users.user-created";
+
+  readonly eventName = UserCreated.EVENT_NAME;
   readonly occurredAt: Date;
   readonly aggregateId: string;
 
