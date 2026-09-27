@@ -1,3 +1,4 @@
+import type { UseCase } from "../../../shared/application/use-case";
 import { InvalidCredentialsError } from "../../domain/errors/invalid-credentials.error";
 import type { UserRepository } from "../../domain/repositories/user-repository";
 import { Email } from "../../domain/value-objects/email";
@@ -21,7 +22,7 @@ export interface SignInOutput {
  * revela se o e-mail existe: usuário inexistente e senha incorreta produzem o
  * mesmo erro.
  */
-export class SignIn {
+export class SignIn implements UseCase<SignInInput, SignInOutput> {
   constructor(
     private readonly users: UserRepository,
     private readonly tokens: TokenGenerator,

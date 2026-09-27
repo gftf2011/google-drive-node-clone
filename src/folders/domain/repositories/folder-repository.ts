@@ -2,7 +2,7 @@ import type { Folder } from "../aggregates/folder";
 
 /**
  * Contrato de persistência do agregado Folder — parte do DOMÍNIO.
- * A implementação concreta (Prisma, in-memory) vive na infra.
+ * A implementação concreta (ex.: Prisma) vive na infra.
  */
 export interface FolderRepository {
   /** Indica se o dono já possui uma pasta raiz (usado para idempotência). */

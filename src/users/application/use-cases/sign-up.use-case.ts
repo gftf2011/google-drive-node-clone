@@ -1,4 +1,5 @@
 import type { DomainEventPublisher } from "../../../shared/application/ports/domain-event-publisher";
+import type { UseCase } from "../../../shared/application/use-case";
 import { User } from "../../domain/aggregates/user";
 import { EmailAlreadyInUseError } from "../../domain/errors/email-already-in-use.error";
 import type { UserRepository } from "../../domain/repositories/user-repository";
@@ -24,7 +25,7 @@ export interface SignUpOutput {
  * suas dependências por injeção no construtor; não conhece framework, ORM nem
  * cripto.
  */
-export class SignUp {
+export class SignUp implements UseCase<SignUpInput, SignUpOutput> {
   constructor(
     private readonly users: UserRepository,
     private readonly events: DomainEventPublisher,

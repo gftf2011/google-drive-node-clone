@@ -4,7 +4,7 @@ import type { User } from "../aggregates/user";
  * Contrato de persistência do agregado User — parte do DOMÍNIO.
  *
  * É o domínio que declara o que precisa para guardar/recuperar seus agregados;
- * a implementação concreta (Prisma, in-memory, etc.) vive na infra e depende
+ * a implementação concreta (ex.: Prisma) vive na infra e depende
  * desta interface, nunca o contrário. A regra da dependência aponta para dentro.
  */
 export interface UserRepository {

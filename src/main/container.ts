@@ -1,11 +1,14 @@
 import { CreateRootFolderOnUserCreated } from "../folders/application/event-handlers/create-root-folder-on-user-created";
 import { CreateRootFolder } from "../folders/application/use-cases/create-root-folder.use-case";
-import { InMemoryFolderRepository } from "../folders/infra/persistence/in-memory-folder-repository";
+import { PrismaFolderRepository } from "../folders/infra/persistence/prisma-folder-repository";
+import { TransactionalUseCase } from "../shared/application/transactional-use-case";
+import { prisma } from "../shared/infra/database/prisma/client";
+import { PrismaTransactionContext } from "../shared/infra/database/prisma/prisma-transaction-context";
 import { InProcessEventDispatcher } from "../shared/infra/events/in-process-event-dispatcher";
 import { SignIn } from "../users/application/use-cases/sign-in.use-case";
 import { SignUp } from "../users/application/use-cases/sign-up.use-case";
 import { UserCreated } from "../users/domain/events/user-created.event";
-import { InMemoryUserRepository } from "../users/infra/persistence/in-memory-user-repository";
+import { PrismaUserRepository } from "../users/infra/persistence/prisma-user-repository";
 import { JwtTokenGenerator } from "../users/infra/providers/jwt-token-generator";
 import { SignInController } from "../users/presentation/controllers/sign-in.controller";
 import { SignUpController } from "../users/presentation/controllers/sign-up.controller";
@@ -20,13 +23,17 @@ export interface Container {
 /**
  * Composition root: instancia os adapters, injeta as dependências e registra os
  * handlers de eventos entre contextos. É o ÚNICO lugar que conhece todos os
- * contextos ao mesmo tempo. Para migrar de in-memory para Prisma, troca-se
- * apenas as implementações dos repositórios aqui.
+ * contextos ao mesmo tempo. Trocar a implementação de qualquer adapter (ex.: o
+ * repositório) afeta apenas este arquivo — o domínio e a aplicação não mudam.
  */
 export function buildContainer(env: Env): Container {
+  // --- Transação/UoW: o mesmo contexto provê o client corrente aos repos e a
+  // fronteira transacional (via AsyncLocalStorage). ---
+  const unitOfWork = new PrismaTransactionContext(prisma);
+
   // --- Adapters de saída (infra) ---
-  const userRepository = new InMemoryUserRepository();
-  const folderRepository = new InMemoryFolderRepository();
+  const userRepository = new PrismaUserRepository(unitOfWork);
+  const folderRepository = new PrismaFolderRepository(unitOfWork);
   const tokenGenerator = new JwtTokenGenerator({
     secret: env.jwt.secret,
     expiresInSeconds: env.jwt.expiresInSeconds,
@@ -40,7 +47,12 @@ export function buildContainer(env: Env): Container {
   );
 
   // --- Casos de uso ---
-  const signUp = new SignUp(userRepository, eventPublisher, tokenGenerator);
+  // SignUp muta estado (usuário + pasta raiz via evento) → decorado com a UoW,
+  // para commitar tudo atomicamente. SignIn é somente leitura → sem transação.
+  const signUp = new TransactionalUseCase(
+    new SignUp(userRepository, eventPublisher, tokenGenerator),
+    unitOfWork,
+  );
   const signIn = new SignIn(userRepository, tokenGenerator);
 
   // --- Controllers (presentation) ---

@@ -11,3 +11,30 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+/// Contexto: users
+model User {
+  id        String   @id @db.Uuid
+  name      String
+  email     String   @unique
+  password  String // formato "salt:hash" (scrypt); nunca a senha em texto puro
+  createdAt DateTime @map("created_at")
+  updatedAt DateTime @map("updated_at")
+
+  @@map("users")
+}
+
+/// Contexto: folders. `ownerId` referencia um usuário por id (sem FK — contextos
+/// desacoplados). Pasta raiz = `parentId` nulo.
+model Folder {
+  id        String   @id @db.Uuid
+  name      String
+  ownerId   String   @map("owner_id") @db.Uuid
+  parentId  String?  @map("parent_id") @db.Uuid
+  createdAt DateTime @map("created_at")
+  updatedAt DateTime @map("updated_at")
+
+  @@index([ownerId])
+  @@index([parentId])
+  @@map("folders")
+}

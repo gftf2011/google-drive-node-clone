@@ -1,6 +1,10 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 
-import type { SignUp } from "../../application/use-cases/sign-up.use-case";
+import type { UseCase } from "../../../shared/application/use-case";
+import type {
+  SignUpInput,
+  SignUpOutput,
+} from "../../application/use-cases/sign-up.use-case";
 
 export interface SignUpBody {
   name: string;
@@ -14,7 +18,7 @@ export interface SignUpBody {
  * handler global.
  */
 export class SignUpController {
-  constructor(private readonly signUp: SignUp) {}
+  constructor(private readonly signUp: UseCase<SignUpInput, SignUpOutput>) {}
 
   async handle(
     request: FastifyRequest<{ Body: SignUpBody }>,
