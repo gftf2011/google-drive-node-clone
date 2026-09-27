@@ -1,6 +1,6 @@
-import type { EventHandler } from "../../../shared/application/event-handler.js";
-import type { DomainEvent } from "../../../shared/domain/events/domain-event.js";
-import type { CreateRootFolder } from "../use-cases/create-root-folder.use-case.js";
+import type { EventHandler } from "../../../shared/application/event-handler";
+import type { DomainEvent } from "../../../shared/domain/events/domain-event";
+import type { CreateRootFolder } from "../use-cases/create-root-folder.use-case";
 
 /**
  * Cria a pasta raiz de um usuário recém-criado.

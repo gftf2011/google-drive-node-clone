@@ -1,4 +1,4 @@
-import { InvalidNameError } from "../errors/invalid-name.error.js";
+import { InvalidNameError } from "../errors/invalid-name.error";
 
 const MIN_LENGTH = 2;
 const MAX_LENGTH = 100;

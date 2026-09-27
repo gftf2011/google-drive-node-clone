@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 
-import { Uuid } from "../../../shared/domain/value-objects/uuid.js";
-import { InvalidFolderIdError } from "../errors/invalid-folder-id.error.js";
+import { Uuid } from "../../../shared/domain/value-objects/uuid";
+import { InvalidFolderIdError } from "../errors/invalid-folder-id.error";
 
 /** Identidade do agregado Folder. */
 export class FolderId extends Uuid {

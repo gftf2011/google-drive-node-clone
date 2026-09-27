@@ -1,9 +1,9 @@
-import type { DomainEventPublisher } from "../../../shared/application/ports/domain-event-publisher.js";
-import { User } from "../../domain/aggregates/user.js";
-import { EmailAlreadyInUseError } from "../../domain/errors/email-already-in-use.error.js";
-import type { UserRepository } from "../../domain/repositories/user-repository.js";
-import { Email } from "../../domain/value-objects/email.js";
-import type { TokenGenerator } from "../ports/providers/token-generator.js";
+import type { DomainEventPublisher } from "../../../shared/application/ports/domain-event-publisher";
+import { User } from "../../domain/aggregates/user";
+import { EmailAlreadyInUseError } from "../../domain/errors/email-already-in-use.error";
+import type { UserRepository } from "../../domain/repositories/user-repository";
+import { Email } from "../../domain/value-objects/email";
+import type { TokenGenerator } from "../ports/providers/token-generator";
 
 export interface SignUpInput {
   name: string;

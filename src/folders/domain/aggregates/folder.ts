@@ -1,9 +1,9 @@
-import { AggregateRoot } from "../../../shared/domain/aggregates/aggregate-root.js";
-import { CannotModifyRootFolderError } from "../errors/cannot-modify-root-folder.error.js";
-import { InvalidFolderHierarchyError } from "../errors/invalid-folder-hierarchy.error.js";
-import { FolderId } from "../value-objects/folder-id.js";
-import { FolderName } from "../value-objects/folder-name.js";
-import { OwnerId } from "../value-objects/owner-id.js";
+import { AggregateRoot } from "../../../shared/domain/aggregates/aggregate-root";
+import { CannotModifyRootFolderError } from "../errors/cannot-modify-root-folder.error";
+import { InvalidFolderHierarchyError } from "../errors/invalid-folder-hierarchy.error";
+import { FolderId } from "../value-objects/folder-id";
+import { FolderName } from "../value-objects/folder-name";
+import { OwnerId } from "../value-objects/owner-id";
 
 /** Nome padrão da pasta raiz de cada usuário. */
 const ROOT_FOLDER_NAME = "root";

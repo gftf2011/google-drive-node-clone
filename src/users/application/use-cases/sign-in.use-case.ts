@@ -1,7 +1,7 @@
-import { InvalidCredentialsError } from "../../domain/errors/invalid-credentials.error.js";
-import type { UserRepository } from "../../domain/repositories/user-repository.js";
-import { Email } from "../../domain/value-objects/email.js";
-import type { TokenGenerator } from "../ports/providers/token-generator.js";
+import { InvalidCredentialsError } from "../../domain/errors/invalid-credentials.error";
+import type { UserRepository } from "../../domain/repositories/user-repository";
+import { Email } from "../../domain/value-objects/email";
+import type { TokenGenerator } from "../ports/providers/token-generator";
 
 export interface SignInInput {
   email: string;

@@ -1,4 +1,4 @@
-import { DomainError } from "../../../shared/domain/errors/domain-error.js";
+import { DomainError } from "../../../shared/domain/errors/domain-error";
 
 export class InvalidPasswordError extends DomainError {
   readonly code = "INVALID_PASSWORD";

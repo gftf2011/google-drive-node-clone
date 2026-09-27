@@ -1,7 +1,7 @@
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 
-import { InvalidPasswordError } from "../errors/invalid-password.error.js";
-import { WeakPasswordError } from "../errors/weak-password.error.js";
+import { InvalidPasswordError } from "../errors/invalid-password.error";
+import { WeakPasswordError } from "../errors/weak-password.error";
 
 const MIN_LENGTH = 8;
 const MAX_LENGTH = 128;

@@ -1,4 +1,4 @@
-import { DomainError } from "../../../shared/domain/errors/domain-error.js";
+import { DomainError } from "../../../shared/domain/errors/domain-error";
 
 /**
  * Falha de autenticação. Usada tanto para usuário inexistente quanto para senha

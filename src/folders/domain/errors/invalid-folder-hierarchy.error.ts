@@ -1,4 +1,4 @@
-import { DomainError } from "../../../shared/domain/errors/domain-error.js";
+import { DomainError } from "../../../shared/domain/errors/domain-error";
 
 /**
  * A operação violaria a hierarquia de pastas (ex.: uma pasta como pai de si

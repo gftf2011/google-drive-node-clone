@@ -1,9 +1,9 @@
-import { AggregateRoot } from "../../../shared/domain/aggregates/aggregate-root.js";
-import { UserCreated } from "../events/user-created.event.js";
-import { Email } from "../value-objects/email.js";
-import { Name } from "../value-objects/name.js";
-import { Password } from "../value-objects/password.js";
-import { UserId } from "../value-objects/user-id.js";
+import { AggregateRoot } from "../../../shared/domain/aggregates/aggregate-root";
+import { UserCreated } from "../events/user-created.event";
+import { Email } from "../value-objects/email";
+import { Name } from "../value-objects/name";
+import { Password } from "../value-objects/password";
+import { UserId } from "../value-objects/user-id";
 
 interface UserProps {
   name: Name;

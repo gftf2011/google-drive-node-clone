@@ -1,4 +1,4 @@
-import type { User } from "../aggregates/user.js";
+import type { User } from "../aggregates/user";
 
 /**
  * Contrato de persistência do agregado User — parte do DOMÍNIO.

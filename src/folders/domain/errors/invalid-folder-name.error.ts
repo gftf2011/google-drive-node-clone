@@ -1,4 +1,4 @@
-import { DomainError } from "../../../shared/domain/errors/domain-error.js";
+import { DomainError } from "../../../shared/domain/errors/domain-error";
 
 export class InvalidFolderNameError extends DomainError {
   readonly code = "INVALID_FOLDER_NAME";

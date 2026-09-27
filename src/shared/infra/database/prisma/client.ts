@@ -1,5 +1,5 @@
 import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "./generated/client.js";
+import { PrismaClient } from "./generated/client";
 
 /**
  * Singleton do PrismaClient — detalhe de INFRAESTRUTURA.

@@ -1,5 +1,5 @@
-import type { DomainEvent } from "../../../shared/domain/events/domain-event.js";
-import type { UserId } from "../value-objects/user-id.js";
+import type { DomainEvent } from "../../../shared/domain/events/domain-event";
+import type { UserId } from "../value-objects/user-id";
 
 /**
  * Fato de domínio: um usuário foi criado.

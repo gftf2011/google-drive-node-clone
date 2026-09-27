@@ -1,4 +1,4 @@
-import type { DomainEvent } from "../domain/events/domain-event.js";
+import type { DomainEvent } from "../domain/events/domain-event";
 
 /**
  * Contrato de um manipulador de evento de domínio.

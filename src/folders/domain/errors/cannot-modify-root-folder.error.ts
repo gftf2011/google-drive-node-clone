@@ -1,4 +1,4 @@
-import { DomainError } from "../../../shared/domain/errors/domain-error.js";
+import { DomainError } from "../../../shared/domain/errors/domain-error";
 
 /**
  * A pasta raiz do usuário não pode ser renomeada nem movida — é o topo da

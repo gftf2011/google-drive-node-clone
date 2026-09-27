@@ -1,4 +1,4 @@
-import { InvalidFolderNameError } from "../errors/invalid-folder-name.error.js";
+import { InvalidFolderNameError } from "../errors/invalid-folder-name.error";
 
 const MIN_LENGTH = 1;
 const MAX_LENGTH = 255;

@@ -1,4 +1,4 @@
-import type { DomainEvent } from "../events/domain-event.js";
+import type { DomainEvent } from "../events/domain-event";
 
 /**
  * Contrato mínimo de uma identidade de agregado: sabe comparar-se por valor.

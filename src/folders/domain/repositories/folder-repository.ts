@@ -1,4 +1,4 @@
-import type { Folder } from "../aggregates/folder.js";
+import type { Folder } from "../aggregates/folder";
 
 /**
  * Contrato de persistência do agregado Folder — parte do DOMÍNIO.

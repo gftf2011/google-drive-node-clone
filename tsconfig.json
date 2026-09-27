@@ -3,15 +3,12 @@
     /* Ambiente: Node.js 24 LTS (Krypton) + ESM */
     "target": "ES2023",
     "lib": ["ES2023"],
-    "module": "nodenext",
-    "moduleResolution": "nodenext",
+    /* `preserve` + `bundler`: ESM sem exigir extensão nos imports relativos.
+       Execução via tsx (dev e start); tsc fica só para typecheck. */
+    "module": "preserve",
+    "moduleResolution": "bundler",
     "types": ["node"],
-
-    /* Saída */
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "sourceMap": true,
-    "declaration": true,
+    "noEmit": true,
 
     /* Checagem estrita */
     "strict": true,

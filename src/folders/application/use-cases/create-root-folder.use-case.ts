@@ -1,5 +1,5 @@
-import { Folder } from "../../domain/aggregates/folder.js";
-import type { FolderRepository } from "../../domain/repositories/folder-repository.js";
+import { Folder } from "../../domain/aggregates/folder";
+import type { FolderRepository } from "../../domain/repositories/folder-repository";
 
 export interface CreateRootFolderInput {
   /** Id do usuário dono da pasta raiz (referência ao contexto `users`). */

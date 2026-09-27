@@ -1,5 +1,5 @@
-import { Uuid } from "../../../shared/domain/value-objects/uuid.js";
-import { InvalidOwnerIdError } from "../errors/invalid-owner-id.error.js";
+import { Uuid } from "../../../shared/domain/value-objects/uuid";
+import { InvalidOwnerIdError } from "../errors/invalid-owner-id.error";
 
 /**
  * Referência ao usuário dono da pasta, por identidade.
