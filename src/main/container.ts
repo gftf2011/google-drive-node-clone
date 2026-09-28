@@ -1,25 +1,24 @@
-import { PurgeFilesOnFolderDeleted } from "../files/application/event-handlers/purge-files-on-folder-deleted";
-import { CompleteMultipartUpload } from "../files/application/use-cases/complete-multipart-upload.use-case";
-import { GetFileDownloadUrl } from "../files/application/use-cases/get-file-download-url.use-case";
-import { PurgeFilesInFolders } from "../files/application/use-cases/purge-files-in-folders.use-case";
-import { StartMultipartUpload } from "../files/application/use-cases/start-multipart-upload.use-case";
-import { PrismaFileMetadataRepository } from "../files/infra/persistence/prisma-file-metadata-repository";
-import { PrismaUploadRepository } from "../files/infra/persistence/prisma-upload-repository";
-import { S3ObjectStorage } from "../files/infra/storage/s3-object-storage";
-import { CompleteMultipartUploadController } from "../files/presentation/controllers/complete-multipart-upload.controller";
-import { GetFileDownloadUrlController } from "../files/presentation/controllers/get-file-download-url.controller";
-import { StartMultipartUploadController } from "../files/presentation/controllers/start-multipart-upload.controller";
-import type { FileControllers } from "../files/presentation/routes/file.routes";
-import type { UploadControllers } from "../files/presentation/routes/upload.routes";
-import { CreateRootFolderOnUserCreated } from "../folders/application/event-handlers/create-root-folder-on-user-created";
-import { CreateFolder } from "../folders/application/use-cases/create-folder.use-case";
-import { CreateRootFolder } from "../folders/application/use-cases/create-root-folder.use-case";
-import { DeleteFolder } from "../folders/application/use-cases/delete-folder.use-case";
-import { FolderDeleted } from "../folders/domain/events/folder-deleted.event";
-import { PrismaFolderRepository } from "../folders/infra/persistence/prisma-folder-repository";
-import { CreateFolderController } from "../folders/presentation/controllers/create-folder.controller";
-import { DeleteFolderController } from "../folders/presentation/controllers/delete-folder.controller";
-import type { FolderControllers } from "../folders/presentation/routes/folder.routes";
+import { CreateRootFolderOnUserCreated } from "../drive/application/event-handlers/create-root-folder-on-user-created";
+import { CompleteMultipartUpload } from "../drive/application/use-cases/complete-multipart-upload.use-case";
+import { CreateFolder } from "../drive/application/use-cases/create-folder.use-case";
+import { CreateRootFolder } from "../drive/application/use-cases/create-root-folder.use-case";
+import { DeleteFolder } from "../drive/application/use-cases/delete-folder.use-case";
+import { GetFileDownloadUrl } from "../drive/application/use-cases/get-file-download-url.use-case";
+import { ListFolderContents } from "../drive/application/use-cases/list-folder-contents.use-case";
+import { StartMultipartUpload } from "../drive/application/use-cases/start-multipart-upload.use-case";
+import { PrismaFileMetadataRepository } from "../drive/infra/persistence/prisma-file-metadata-repository";
+import { PrismaFolderRepository } from "../drive/infra/persistence/prisma-folder-repository";
+import { PrismaUploadRepository } from "../drive/infra/persistence/prisma-upload-repository";
+import { S3ObjectStorage } from "../drive/infra/storage/s3-object-storage";
+import { CompleteMultipartUploadController } from "../drive/presentation/controllers/complete-multipart-upload.controller";
+import { CreateFolderController } from "../drive/presentation/controllers/create-folder.controller";
+import { DeleteFolderController } from "../drive/presentation/controllers/delete-folder.controller";
+import { GetFileDownloadUrlController } from "../drive/presentation/controllers/get-file-download-url.controller";
+import { ListFolderContentsController } from "../drive/presentation/controllers/list-folder-contents.controller";
+import { StartMultipartUploadController } from "../drive/presentation/controllers/start-multipart-upload.controller";
+import type { FileControllers } from "../drive/presentation/routes/file.routes";
+import type { FolderControllers } from "../drive/presentation/routes/folder.routes";
+import type { UploadControllers } from "../drive/presentation/routes/upload.routes";
 import { TransactionalUseCase } from "../shared/application/transactional-use-case";
 import { prisma } from "../shared/infra/database/prisma/client";
 import { PrismaTransactionContext } from "../shared/infra/database/prisma/prisma-transaction-context";
@@ -83,17 +82,10 @@ export function buildContainer(env: Env): Container {
 
   // --- Eventos: dispatcher síncrono + fiação cross-context ---
   const eventPublisher = new InProcessEventDispatcher();
-  // users -> folders: cria a pasta raiz ao cadastrar um usuário.
+  // users -> drive: cria a pasta raiz ao cadastrar um usuário.
   eventPublisher.register(
     UserCreated.EVENT_NAME,
     new CreateRootFolderOnUserCreated(new CreateRootFolder(folderRepository)),
-  );
-  // folders -> files: apaga os arquivos (registros + objetos) das pastas removidas.
-  eventPublisher.register(
-    FolderDeleted.EVENT_NAME,
-    new PurgeFilesOnFolderDeleted(
-      new PurgeFilesInFolders(fileMetadataRepository, storage),
-    ),
   );
 
   // --- Casos de uso ---
@@ -130,9 +122,19 @@ export function buildContainer(env: Env): Container {
 
   // Criação de pasta — escrita única, sem UoW.
   const createFolder = new CreateFolder(folderRepository);
-  // Remoção de pasta — publica FolderDeleted (o handler de `files` purga os
-  // arquivos) e então remove as pastas. S3 é best-effort, fora de transação.
-  const deleteFolder = new DeleteFolder(folderRepository, eventPublisher);
+  // Remoção de pasta — apaga a subárvore (pastas + arquivos) na mesma transação
+  // e limpa o storage em lote após o commit (best-effort).
+  const deleteFolder = new DeleteFolder(
+    folderRepository,
+    fileMetadataRepository,
+    storage,
+    unitOfWork,
+  );
+  // Listagem de conteúdo — subpastas + arquivos num único caso de uso.
+  const listFolderContents = new ListFolderContents(
+    folderRepository,
+    fileMetadataRepository,
+  );
 
   // --- Controllers (presentation) ---
   return {
@@ -143,6 +145,7 @@ export function buildContainer(env: Env): Container {
     folderControllers: {
       create: new CreateFolderController(createFolder),
       delete: new DeleteFolderController(deleteFolder),
+      listContents: new ListFolderContentsController(listFolderContents),
     },
     uploadControllers: {
       start: new StartMultipartUploadController(startUpload),

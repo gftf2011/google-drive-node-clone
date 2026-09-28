@@ -245,3 +245,88 @@ describe("Delete folder", () => {
     expect(res.body.error).toBe("FOLDER_ACCESS_DENIED");
   });
 });
+
+describe("List folder contents", () => {
+  it("rejects the request without a token (401)", async () => {
+    const res = await request(env.app.server).get("/folders");
+    expect(res.status).toBe(401);
+  });
+
+  it("returns both subfolders and files of the root", async () => {
+    const token = await signUp();
+
+    // Discover the root id, then put a folder and a file directly in it.
+    const rootListing = await request(env.app.server)
+      .get("/folders")
+      .set("Authorization", `Bearer ${token}`);
+    const rootId = rootListing.body.folderId as string;
+
+    await createFolder(token, "Sub");
+    await uploadFileInto(token, rootId);
+
+    const res = await request(env.app.server)
+      .get("/folders")
+      .set("Authorization", `Bearer ${token}`);
+    expect(res.status).toBe(200);
+    expect(res.body.folderId).toBe(rootId);
+    expect(res.body.folders.map((f: { name: string }) => f.name)).toContain(
+      "Sub",
+    );
+    expect(res.body.files.map((f: { name: string }) => f.name)).toContain(
+      "doc.txt",
+    );
+  });
+
+  it("orders subfolders by most recent first with sort=recent", async () => {
+    const token = await signUp();
+    await createFolder(token, "Older");
+    await createFolder(token, "Newer");
+
+    const res = await request(env.app.server)
+      .get("/folders?sort=recent")
+      .set("Authorization", `Bearer ${token}`);
+    expect(res.status).toBe(200);
+    const names = res.body.folders.map((f: { name: string }) => f.name);
+    expect(names.indexOf("Newer")).toBeLessThan(names.indexOf("Older"));
+  });
+
+  it("lists the contents of a specific folder", async () => {
+    const token = await signUp();
+    const parent = await createFolder(token, "Parent");
+    await createFolder(token, "Child", parent);
+    await uploadFileInto(token, parent);
+
+    const res = await request(env.app.server)
+      .get(`/folders/${parent}`)
+      .set("Authorization", `Bearer ${token}`);
+    expect(res.status).toBe(200);
+    expect(res.body.folderId).toBe(parent);
+    expect(res.body.folders.map((f: { name: string }) => f.name)).toEqual([
+      "Child",
+    ]);
+    expect(res.body.files.map((f: { name: string }) => f.name)).toEqual([
+      "doc.txt",
+    ]);
+  });
+
+  it("fails for a non-existent folder (404)", async () => {
+    const token = await signUp();
+    const res = await request(env.app.server)
+      .get(`/folders/${randomUUID()}`)
+      .set("Authorization", `Bearer ${token}`);
+    expect(res.status).toBe(404);
+    expect(res.body.error).toBe("FOLDER_NOT_FOUND");
+  });
+
+  it("forbids listing another user's folder (403)", async () => {
+    const ownerToken = await signUp();
+    const owned = await createFolder(ownerToken, "Owner's folder");
+
+    const intruderToken = await signUp();
+    const res = await request(env.app.server)
+      .get(`/folders/${owned}`)
+      .set("Authorization", `Bearer ${intruderToken}`);
+    expect(res.status).toBe(403);
+    expect(res.body.error).toBe("FOLDER_ACCESS_DENIED");
+  });
+});

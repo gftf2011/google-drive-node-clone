@@ -1,9 +1,9 @@
 import Fastify from "fastify";
 import type { FastifyInstance } from "fastify";
 
-import { fileRoutes } from "../../files/presentation/routes/file.routes";
-import { uploadRoutes } from "../../files/presentation/routes/upload.routes";
-import { folderRoutes } from "../../folders/presentation/routes/folder.routes";
+import { fileRoutes } from "../../drive/presentation/routes/file.routes";
+import { folderRoutes } from "../../drive/presentation/routes/folder.routes";
+import { uploadRoutes } from "../../drive/presentation/routes/upload.routes";
 import { registerErrorHandler } from "../../shared/presentation/http/error-handler";
 import { userRoutes } from "../../users/presentation/routes/user.routes";
 import type { Env } from "../config/env";
