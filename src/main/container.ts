@@ -1,4 +1,6 @@
+import { PurgeFilesOnFolderDeleted } from "../files/application/event-handlers/purge-files-on-folder-deleted";
 import { CompleteMultipartUpload } from "../files/application/use-cases/complete-multipart-upload.use-case";
+import { PurgeFilesInFolders } from "../files/application/use-cases/purge-files-in-folders.use-case";
 import { StartMultipartUpload } from "../files/application/use-cases/start-multipart-upload.use-case";
 import { PrismaFileMetadataRepository } from "../files/infra/persistence/prisma-file-metadata-repository";
 import { PrismaUploadRepository } from "../files/infra/persistence/prisma-upload-repository";
@@ -7,8 +9,14 @@ import { CompleteMultipartUploadController } from "../files/presentation/control
 import { StartMultipartUploadController } from "../files/presentation/controllers/start-multipart-upload.controller";
 import type { UploadControllers } from "../files/presentation/routes/upload.routes";
 import { CreateRootFolderOnUserCreated } from "../folders/application/event-handlers/create-root-folder-on-user-created";
+import { CreateFolder } from "../folders/application/use-cases/create-folder.use-case";
 import { CreateRootFolder } from "../folders/application/use-cases/create-root-folder.use-case";
+import { DeleteFolder } from "../folders/application/use-cases/delete-folder.use-case";
+import { FolderDeleted } from "../folders/domain/events/folder-deleted.event";
 import { PrismaFolderRepository } from "../folders/infra/persistence/prisma-folder-repository";
+import { CreateFolderController } from "../folders/presentation/controllers/create-folder.controller";
+import { DeleteFolderController } from "../folders/presentation/controllers/delete-folder.controller";
+import type { FolderControllers } from "../folders/presentation/routes/folder.routes";
 import { TransactionalUseCase } from "../shared/application/transactional-use-case";
 import { prisma } from "../shared/infra/database/prisma/client";
 import { PrismaTransactionContext } from "../shared/infra/database/prisma/prisma-transaction-context";
@@ -28,6 +36,7 @@ import type { Env } from "./config/env";
 
 export interface Container {
   userControllers: UserControllers;
+  folderControllers: FolderControllers;
   uploadControllers: UploadControllers;
   /** Middleware de autenticação (do `users`), montado pelo `main` nas rotas protegidas. */
   authenticate: AuthenticateMiddleware;
@@ -68,11 +77,19 @@ export function buildContainer(env: Env): Container {
     forcePathStyle: env.storage.forcePathStyle,
   });
 
-  // --- Eventos: dispatcher síncrono + fiação cross-context (users -> folders) ---
+  // --- Eventos: dispatcher síncrono + fiação cross-context ---
   const eventPublisher = new InProcessEventDispatcher();
+  // users -> folders: cria a pasta raiz ao cadastrar um usuário.
   eventPublisher.register(
     UserCreated.EVENT_NAME,
     new CreateRootFolderOnUserCreated(new CreateRootFolder(folderRepository)),
+  );
+  // folders -> files: apaga os arquivos (registros + objetos) das pastas removidas.
+  eventPublisher.register(
+    FolderDeleted.EVENT_NAME,
+    new PurgeFilesOnFolderDeleted(
+      new PurgeFilesInFolders(fileMetadataRepository, storage),
+    ),
   );
 
   // --- Casos de uso ---
@@ -101,11 +118,21 @@ export function buildContainer(env: Env): Container {
     unitOfWork,
   );
 
+  // Criação de pasta — escrita única, sem UoW.
+  const createFolder = new CreateFolder(folderRepository);
+  // Remoção de pasta — publica FolderDeleted (o handler de `files` purga os
+  // arquivos) e então remove as pastas. S3 é best-effort, fora de transação.
+  const deleteFolder = new DeleteFolder(folderRepository, eventPublisher);
+
   // --- Controllers (presentation) ---
   return {
     userControllers: {
       signUp: new SignUpController(signUp),
       signIn: new SignInController(signIn),
+    },
+    folderControllers: {
+      create: new CreateFolderController(createFolder),
+      delete: new DeleteFolderController(deleteFolder),
     },
     uploadControllers: {
       start: new StartMultipartUploadController(startUpload),

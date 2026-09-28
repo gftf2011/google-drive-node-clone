@@ -30,4 +30,35 @@ export class PrismaFileMetadataRepository implements FileMetadataRepository {
       update: data,
     });
   }
+
+  async findByFolderIds(folderIds: readonly string[]): Promise<FileMetadata[]> {
+    if (folderIds.length === 0) {
+      return [];
+    }
+    const rows = await this.context.client.fileMetadata.findMany({
+      where: { folderId: { in: [...folderIds] } },
+    });
+    return rows.map((row) =>
+      FileMetadata.restore({
+        id: row.id,
+        ownerId: row.ownerId,
+        folderId: row.folderId,
+        name: row.name,
+        contentType: row.contentType,
+        size: Number(row.size),
+        storageKey: row.storageKey,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+      }),
+    );
+  }
+
+  async deleteByFolderIds(folderIds: readonly string[]): Promise<void> {
+    if (folderIds.length === 0) {
+      return;
+    }
+    await this.context.client.fileMetadata.deleteMany({
+      where: { folderId: { in: [...folderIds] } },
+    });
+  }
 }

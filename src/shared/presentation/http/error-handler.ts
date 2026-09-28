@@ -14,6 +14,9 @@ const STATUS_BY_CODE: Record<string, number> = {
   UPLOAD_NOT_FOUND: 404,
   UPLOAD_NOT_OWNED: 403,
   UPLOAD_NOT_PENDING: 409,
+  PARENT_FOLDER_NOT_FOUND: 404,
+  FOLDER_NOT_FOUND: 404,
+  FOLDER_ACCESS_DENIED: 403,
 };
 
 function statusForDomainError(error: DomainError): number {

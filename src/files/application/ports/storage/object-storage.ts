@@ -53,4 +53,11 @@ export interface ObjectStorage {
   completeMultipartUpload(
     input: CompleteMultipartUploadInput,
   ): Promise<CompletedObject>;
+
+  /**
+   * Remove vários objetos do storage de uma vez. Idempotente (chaves
+   * inexistentes não falham). A implementação divide em lotes conforme o limite
+   * do provedor — o chamador pode passar qualquer quantidade de chaves.
+   */
+  deleteObjects(input: { keys: readonly string[] }): Promise<void>;
 }

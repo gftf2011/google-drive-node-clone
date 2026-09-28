@@ -2,6 +2,7 @@ import Fastify from "fastify";
 import type { FastifyInstance } from "fastify";
 
 import { uploadRoutes } from "../../files/presentation/routes/upload.routes";
+import { folderRoutes } from "../../folders/presentation/routes/folder.routes";
 import { registerErrorHandler } from "../../shared/presentation/http/error-handler";
 import { userRoutes } from "../../users/presentation/routes/user.routes";
 import type { Env } from "../config/env";
@@ -37,12 +38,13 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
 
   await app.register(userRoutes(container.userControllers));
 
-  // Rotas de `files` protegidas: num escopo próprio (encapsulamento do Fastify),
-  // o `preHandler` de autenticação roda antes de cada rota e NÃO vaza para as
-  // demais. O middleware é do `users`; o `main` decide onde montá-lo.
-  await app.register(async (files) => {
-    files.addHook("preHandler", container.authenticate.handle);
-    await files.register(uploadRoutes(container.uploadControllers));
+  // Rotas protegidas (`files` e `folders`): num escopo próprio (encapsulamento
+  // do Fastify), o `preHandler` de autenticação roda antes de cada rota e NÃO
+  // vaza para as demais. O middleware é do `users`; o `main` decide onde montá-lo.
+  await app.register(async (protectedRoutes) => {
+    protectedRoutes.addHook("preHandler", container.authenticate.handle);
+    await protectedRoutes.register(uploadRoutes(container.uploadControllers));
+    await protectedRoutes.register(folderRoutes(container.folderControllers));
   });
 
   return app;

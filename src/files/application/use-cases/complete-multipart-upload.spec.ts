@@ -35,6 +35,7 @@ function makeStorage(): ObjectStorage {
     completeMultipartUpload: jest
       .fn()
       .mockResolvedValue({ etag: "final-etag", location: "http://loc/a.txt" }),
+    deleteObjects: jest.fn(),
   };
 }
 
@@ -52,6 +53,8 @@ function makeFiles(): FileMetadataRepository & { saved: FileMetadata[] } {
     save: jest.fn().mockImplementation(async (file: FileMetadata) => {
       saved.push(file);
     }),
+    findByFolderIds: jest.fn().mockResolvedValue([]),
+    deleteByFolderIds: jest.fn().mockResolvedValue(undefined),
   };
 }
 

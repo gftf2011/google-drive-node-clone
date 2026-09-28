@@ -80,5 +80,46 @@ describe("S3ObjectStorage against floci", () => {
       }).transformToByteArray(),
     );
     expect(stored.equals(content)).toBe(true);
+
+    // Batch delete removes the object.
+    await storage.deleteObjects({ keys: [key] });
+    await expect(
+      verifier.send(new GetObjectCommand({ Bucket: BUCKET, Key: key })),
+    ).rejects.toThrow();
+  });
+
+  it("batch-deletes many objects, tolerating missing keys", async () => {
+    const keys: string[] = [];
+    for (let i = 0; i < 3; i++) {
+      const key = `uploads/test/${randomUUID()}/f${i}.txt`;
+      const uploadId = await storage.createMultipartUpload({
+        key,
+        contentType: "text/plain",
+      });
+      const url = await storage.presignUploadPart({
+        key,
+        storageUploadId: uploadId,
+        partNumber: 1,
+        expiresInSeconds: 900,
+      });
+      const put = await fetch(url, { method: "PUT", body: Buffer.from(`x${i}`) });
+      await storage.completeMultipartUpload({
+        key,
+        storageUploadId: uploadId,
+        parts: [{ partNumber: 1, etag: put.headers.get("etag") as string }],
+      });
+      keys.push(key);
+    }
+
+    // Include a non-existent key — DeleteObjects is idempotent and must not throw.
+    await storage.deleteObjects({
+      keys: [...keys, `uploads/test/${randomUUID()}/missing.txt`],
+    });
+
+    for (const key of keys) {
+      await expect(
+        verifier.send(new GetObjectCommand({ Bucket: BUCKET, Key: key })),
+      ).rejects.toThrow();
+    }
   });
 });

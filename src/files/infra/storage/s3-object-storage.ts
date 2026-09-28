@@ -2,6 +2,7 @@ import {
   CompleteMultipartUploadCommand,
   CreateBucketCommand,
   CreateMultipartUploadCommand,
+  DeleteObjectsCommand,
   HeadBucketCommand,
   PutBucketCorsCommand,
   S3Client,
@@ -103,6 +104,24 @@ export class S3ObjectStorage implements ObjectStorage {
       etag: result.ETag ?? "",
       location: result.Location ?? "",
     };
+  }
+
+  async deleteObjects(input: { keys: readonly string[] }): Promise<void> {
+    // O S3 aceita no máximo 1000 chaves por requisição DeleteObjects.
+    const BATCH = 1000;
+    for (let i = 0; i < input.keys.length; i += BATCH) {
+      const chunk = input.keys.slice(i, i + BATCH);
+      await this.client.send(
+        new DeleteObjectsCommand({
+          Bucket: this.options.bucket,
+          Delete: {
+            Objects: chunk.map((key) => ({ Key: key })),
+            // Não devolve a lista de removidos, só erros — resposta menor.
+            Quiet: true,
+          },
+        }),
+      );
+    }
   }
 
   /**
