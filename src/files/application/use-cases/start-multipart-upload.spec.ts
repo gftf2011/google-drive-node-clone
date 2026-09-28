@@ -16,6 +16,7 @@ function makeStorage(): ObjectStorage {
         `https://storage.test/part/${partNumber}`,
       ),
     completeMultipartUpload: jest.fn(),
+    presignDownload: jest.fn(),
     deleteObjects: jest.fn(),
   };
 }

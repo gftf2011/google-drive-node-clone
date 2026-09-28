@@ -3,6 +3,7 @@ import {
   CreateBucketCommand,
   CreateMultipartUploadCommand,
   DeleteObjectsCommand,
+  GetObjectCommand,
   HeadBucketCommand,
   PutBucketCorsCommand,
   S3Client,
@@ -15,6 +16,7 @@ import type {
   CompletedObject,
   CreateMultipartUploadInput,
   ObjectStorage,
+  PresignDownloadInput,
   PresignUploadPartInput,
 } from "../../application/ports/storage/object-storage";
 
@@ -78,6 +80,22 @@ export class S3ObjectStorage implements ObjectStorage {
       Key: input.key,
       UploadId: input.storageUploadId,
       PartNumber: input.partNumber,
+    });
+    return getSignedUrl(this.client, command, {
+      expiresIn: input.expiresInSeconds,
+    });
+  }
+
+  async presignDownload(input: PresignDownloadInput): Promise<string> {
+    const command = new GetObjectCommand({
+      Bucket: this.options.bucket,
+      Key: input.key,
+      ResponseContentType: input.contentType,
+      // Aspas quebrariam o cabeçalho; removidas do nome exibido no download.
+      ResponseContentDisposition: `attachment; filename="${input.fileName.replace(
+        /"/g,
+        "",
+      )}"`,
     });
     return getSignedUrl(this.client, command, {
       expiresIn: input.expiresInSeconds,

@@ -13,6 +13,13 @@ import type { FileMetadataRepository } from "../../domain/repositories/file-meta
 export class PrismaFileMetadataRepository implements FileMetadataRepository {
   constructor(private readonly context: PrismaTransactionContext) {}
 
+  async findById(id: string): Promise<FileMetadata | null> {
+    const row = await this.context.client.fileMetadata.findUnique({
+      where: { id },
+    });
+    return row === null ? null : this.toDomain(row);
+  }
+
   async save(file: FileMetadata): Promise<void> {
     const data = {
       ownerId: file.ownerId.value,
@@ -38,19 +45,7 @@ export class PrismaFileMetadataRepository implements FileMetadataRepository {
     const rows = await this.context.client.fileMetadata.findMany({
       where: { folderId: { in: [...folderIds] } },
     });
-    return rows.map((row) =>
-      FileMetadata.restore({
-        id: row.id,
-        ownerId: row.ownerId,
-        folderId: row.folderId,
-        name: row.name,
-        contentType: row.contentType,
-        size: Number(row.size),
-        storageKey: row.storageKey,
-        createdAt: row.createdAt,
-        updatedAt: row.updatedAt,
-      }),
-    );
+    return rows.map((row) => this.toDomain(row));
   }
 
   async deleteByFolderIds(folderIds: readonly string[]): Promise<void> {
@@ -59,6 +54,30 @@ export class PrismaFileMetadataRepository implements FileMetadataRepository {
     }
     await this.context.client.fileMetadata.deleteMany({
       where: { folderId: { in: [...folderIds] } },
+    });
+  }
+
+  private toDomain(row: {
+    id: string;
+    ownerId: string;
+    folderId: string;
+    name: string;
+    contentType: string;
+    size: bigint;
+    storageKey: string;
+    createdAt: Date;
+    updatedAt: Date;
+  }): FileMetadata {
+    return FileMetadata.restore({
+      id: row.id,
+      ownerId: row.ownerId,
+      folderId: row.folderId,
+      name: row.name,
+      contentType: row.contentType,
+      size: Number(row.size),
+      storageKey: row.storageKey,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
     });
   }
 }

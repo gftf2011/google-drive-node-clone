@@ -1,6 +1,7 @@
 import Fastify from "fastify";
 import type { FastifyInstance } from "fastify";
 
+import { fileRoutes } from "../../files/presentation/routes/file.routes";
 import { uploadRoutes } from "../../files/presentation/routes/upload.routes";
 import { folderRoutes } from "../../folders/presentation/routes/folder.routes";
 import { registerErrorHandler } from "../../shared/presentation/http/error-handler";
@@ -44,6 +45,7 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
   await app.register(async (protectedRoutes) => {
     protectedRoutes.addHook("preHandler", container.authenticate.handle);
     await protectedRoutes.register(uploadRoutes(container.uploadControllers));
+    await protectedRoutes.register(fileRoutes(container.fileControllers));
     await protectedRoutes.register(folderRoutes(container.folderControllers));
   });
 

@@ -1,12 +1,15 @@
 import { PurgeFilesOnFolderDeleted } from "../files/application/event-handlers/purge-files-on-folder-deleted";
 import { CompleteMultipartUpload } from "../files/application/use-cases/complete-multipart-upload.use-case";
+import { GetFileDownloadUrl } from "../files/application/use-cases/get-file-download-url.use-case";
 import { PurgeFilesInFolders } from "../files/application/use-cases/purge-files-in-folders.use-case";
 import { StartMultipartUpload } from "../files/application/use-cases/start-multipart-upload.use-case";
 import { PrismaFileMetadataRepository } from "../files/infra/persistence/prisma-file-metadata-repository";
 import { PrismaUploadRepository } from "../files/infra/persistence/prisma-upload-repository";
 import { S3ObjectStorage } from "../files/infra/storage/s3-object-storage";
 import { CompleteMultipartUploadController } from "../files/presentation/controllers/complete-multipart-upload.controller";
+import { GetFileDownloadUrlController } from "../files/presentation/controllers/get-file-download-url.controller";
 import { StartMultipartUploadController } from "../files/presentation/controllers/start-multipart-upload.controller";
+import type { FileControllers } from "../files/presentation/routes/file.routes";
 import type { UploadControllers } from "../files/presentation/routes/upload.routes";
 import { CreateRootFolderOnUserCreated } from "../folders/application/event-handlers/create-root-folder-on-user-created";
 import { CreateFolder } from "../folders/application/use-cases/create-folder.use-case";
@@ -38,6 +41,7 @@ export interface Container {
   userControllers: UserControllers;
   folderControllers: FolderControllers;
   uploadControllers: UploadControllers;
+  fileControllers: FileControllers;
   /** Middleware de autenticação (do `users`), montado pelo `main` nas rotas protegidas. */
   authenticate: AuthenticateMiddleware;
   /**
@@ -117,6 +121,12 @@ export function buildContainer(env: Env): Container {
     storage,
     unitOfWork,
   );
+  // Download — somente leitura, devolve uma URL pré-assinada de GET.
+  const getFileDownloadUrl = new GetFileDownloadUrl(
+    fileMetadataRepository,
+    storage,
+    env.storage.presignExpiresInSeconds,
+  );
 
   // Criação de pasta — escrita única, sem UoW.
   const createFolder = new CreateFolder(folderRepository);
@@ -137,6 +147,9 @@ export function buildContainer(env: Env): Container {
     uploadControllers: {
       start: new StartMultipartUploadController(startUpload),
       complete: new CompleteMultipartUploadController(completeUpload),
+    },
+    fileControllers: {
+      getDownloadUrl: new GetFileDownloadUrlController(getFileDownloadUrl),
     },
     authenticate: new AuthenticateMiddleware(tokenVerifier),
     storage,

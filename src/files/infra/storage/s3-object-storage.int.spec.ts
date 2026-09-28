@@ -81,6 +81,22 @@ describe("S3ObjectStorage against floci", () => {
     );
     expect(stored.equals(content)).toBe(true);
 
+    // A presigned download URL returns the content as an attachment.
+    const downloadUrl = await storage.presignDownload({
+      key,
+      fileName: "a.txt",
+      contentType: "text/plain",
+      expiresInSeconds: 900,
+    });
+    const downloaded = await fetch(downloadUrl);
+    expect(downloaded.status).toBe(200);
+    expect(downloaded.headers.get("content-disposition")).toContain(
+      'attachment; filename="a.txt"',
+    );
+    expect(Buffer.from(await downloaded.arrayBuffer()).equals(content)).toBe(
+      true,
+    );
+
     // Batch delete removes the object.
     await storage.deleteObjects({ keys: [key] });
     await expect(

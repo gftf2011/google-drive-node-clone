@@ -214,3 +214,76 @@ describe("Multipart upload (start -> PUT -> complete)", () => {
     expect(res.body.error).toBe("UPLOAD_NOT_OWNED");
   });
 });
+
+/** Uploads a file and returns its id (via the full multipart flow). */
+async function uploadFile(
+  token: string,
+  content: Buffer,
+): Promise<{ fileId: string }> {
+  const start = await request(env.app.server)
+    .post("/uploads")
+    .set("Authorization", `Bearer ${token}`)
+    .send({
+      folderId: randomUUID(),
+      fileName: "report.pdf",
+      contentType: "application/pdf",
+      size: content.length,
+    });
+  const etag = await putPart(start.body.parts[0].url, content);
+  const complete = await request(env.app.server)
+    .post(`/uploads/${start.body.uploadId}/complete`)
+    .set("Authorization", `Bearer ${token}`)
+    .send({ parts: [{ partNumber: 1, etag }] });
+  return { fileId: complete.body.fileId };
+}
+
+describe("Download file", () => {
+  it("rejects the request without a token (401)", async () => {
+    const res = await request(env.app.server).get(
+      `/files/${randomUUID()}/download-url`,
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("returns a presigned url that downloads the file content", async () => {
+    const token = await signUp();
+    const content = Buffer.from("the pdf bytes");
+    const { fileId } = await uploadFile(token, content);
+
+    const res = await request(env.app.server)
+      .get(`/files/${fileId}/download-url`)
+      .set("Authorization", `Bearer ${token}`);
+    expect(res.status).toBe(200);
+    expect(res.body.fileName).toBe("report.pdf");
+    expect(res.body.contentType).toBe("application/pdf");
+    expect(res.body.url).toBeTruthy();
+
+    const download = await fetch(res.body.url);
+    expect(download.status).toBe(200);
+    expect(download.headers.get("content-disposition")).toContain(
+      'filename="report.pdf"',
+    );
+    expect(Buffer.from(await download.arrayBuffer()).equals(content)).toBe(true);
+  });
+
+  it("fails for a non-existent file (404)", async () => {
+    const token = await signUp();
+    const res = await request(env.app.server)
+      .get(`/files/${randomUUID()}/download-url`)
+      .set("Authorization", `Bearer ${token}`);
+    expect(res.status).toBe(404);
+    expect(res.body.error).toBe("FILE_NOT_FOUND");
+  });
+
+  it("forbids downloading another user's file (403)", async () => {
+    const owner = await signUp();
+    const { fileId } = await uploadFile(owner, Buffer.from("secret"));
+
+    const intruder = await signUp();
+    const res = await request(env.app.server)
+      .get(`/files/${fileId}/download-url`)
+      .set("Authorization", `Bearer ${intruder}`);
+    expect(res.status).toBe(403);
+    expect(res.body.error).toBe("FILE_ACCESS_DENIED");
+  });
+});

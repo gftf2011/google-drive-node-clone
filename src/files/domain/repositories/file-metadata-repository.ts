@@ -5,6 +5,9 @@ import type { FileMetadata } from "../aggregates/file-metadata";
  * A implementação concreta (ex.: Prisma) vive na infra.
  */
 export interface FileMetadataRepository {
+  /** Busca um arquivo por id; `null` se não existir. */
+  findById(id: string): Promise<FileMetadata | null>;
+
   /** Persiste um arquivo (novo ou já existente). */
   save(file: FileMetadata): Promise<void>;
 

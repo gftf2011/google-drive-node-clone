@@ -19,6 +19,16 @@ export interface PresignUploadPartInput {
   expiresInSeconds: number;
 }
 
+export interface PresignDownloadInput {
+  key: string;
+  /** Nome sugerido para o arquivo baixado (vira `Content-Disposition: attachment`). */
+  fileName: string;
+  /** `Content-Type` que a resposta do download deve declarar. */
+  contentType: string;
+  /** Validade da URL assinada, em segundos. */
+  expiresInSeconds: number;
+}
+
 export interface CompleteMultipartUploadInput {
   key: string;
   storageUploadId: string;
@@ -48,6 +58,13 @@ export interface ObjectStorage {
 
   /** Gera uma URL assinada para o cliente enviar (`PUT`) uma parte. */
   presignUploadPart(input: PresignUploadPartInput): Promise<string>;
+
+  /**
+   * Gera uma URL assinada de download (`GET`) do objeto. O download vem como
+   * anexo com o nome e o tipo informados (via `Content-Disposition`/`Content-Type`
+   * da resposta).
+   */
+  presignDownload(input: PresignDownloadInput): Promise<string>;
 
   /** Une as partes no objeto final e encerra a sessão. */
   completeMultipartUpload(

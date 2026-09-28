@@ -23,12 +23,14 @@ function makeStorage(): ObjectStorage {
     createMultipartUpload: jest.fn(),
     presignUploadPart: jest.fn(),
     completeMultipartUpload: jest.fn(),
+    presignDownload: jest.fn(),
     deleteObjects: jest.fn().mockResolvedValue(undefined),
   };
 }
 
 function makeFiles(seed: FileMetadata[]): FileMetadataRepository {
   return {
+    findById: jest.fn().mockResolvedValue(null),
     save: jest.fn(),
     findByFolderIds: jest.fn().mockResolvedValue(seed),
     deleteByFolderIds: jest.fn().mockResolvedValue(undefined),

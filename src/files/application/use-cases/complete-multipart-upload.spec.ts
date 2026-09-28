@@ -35,6 +35,7 @@ function makeStorage(): ObjectStorage {
     completeMultipartUpload: jest
       .fn()
       .mockResolvedValue({ etag: "final-etag", location: "http://loc/a.txt" }),
+    presignDownload: jest.fn(),
     deleteObjects: jest.fn(),
   };
 }
@@ -50,6 +51,7 @@ function makeFiles(): FileMetadataRepository & { saved: FileMetadata[] } {
   const saved: FileMetadata[] = [];
   return {
     saved,
+    findById: jest.fn().mockResolvedValue(null),
     save: jest.fn().mockImplementation(async (file: FileMetadata) => {
       saved.push(file);
     }),
