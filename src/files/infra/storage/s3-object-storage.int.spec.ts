@@ -1,0 +1,84 @@
+import { randomUUID } from "node:crypto";
+
+import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
+
+import { startFloci } from "../../../shared/testing/containers";
+import type { StartedFloci } from "../../../shared/testing/containers";
+
+import { S3ObjectStorage } from "./s3-object-storage";
+
+const BUCKET = "gdrive-uploads-test";
+
+let floci: StartedFloci;
+let storage: S3ObjectStorage;
+let verifier: S3Client;
+
+beforeAll(async () => {
+  floci = await startFloci();
+  const options = {
+    region: "us-east-1",
+    bucket: BUCKET,
+    endpoint: floci.endpoint,
+    accessKeyId: "test",
+    secretAccessKey: "test",
+    forcePathStyle: true,
+  };
+  storage = new S3ObjectStorage(options);
+  await storage.ensureBucketExists();
+  verifier = new S3Client({
+    region: options.region,
+    endpoint: options.endpoint,
+    forcePathStyle: true,
+    credentials: {
+      accessKeyId: options.accessKeyId,
+      secretAccessKey: options.secretAccessKey,
+    },
+  });
+});
+
+afterAll(async () => {
+  await floci?.container.stop();
+});
+
+describe("S3ObjectStorage against floci", () => {
+  it("runs a full multipart cycle: create, presign, PUT, complete", async () => {
+    const key = `uploads/test/${randomUUID()}/a.txt`;
+    const content = Buffer.from("integration content through a presigned url");
+
+    const storageUploadId = await storage.createMultipartUpload({
+      key,
+      contentType: "text/plain",
+    });
+    expect(storageUploadId).toBeTruthy();
+
+    const url = await storage.presignUploadPart({
+      key,
+      storageUploadId,
+      partNumber: 1,
+      expiresInSeconds: 900,
+    });
+    expect(url).toContain("X-Amz-Signature");
+
+    const put = await fetch(url, { method: "PUT", body: content });
+    expect(put.status).toBe(200);
+    const etag = put.headers.get("etag");
+    expect(etag).toBeTruthy();
+
+    const completed = await storage.completeMultipartUpload({
+      key,
+      storageUploadId,
+      parts: [{ partNumber: 1, etag: etag as string }],
+    });
+    expect(completed.etag).toBeTruthy();
+
+    const object = await verifier.send(
+      new GetObjectCommand({ Bucket: BUCKET, Key: key }),
+    );
+    const stored = Buffer.from(
+      await (object.Body as {
+        transformToByteArray: () => Promise<Uint8Array>;
+      }).transformToByteArray(),
+    );
+    expect(stored.equals(content)).toBe(true);
+  });
+});

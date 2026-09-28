@@ -3,11 +3,13 @@
     /* Ambiente: Node.js 24 LTS (Krypton) + ESM */
     "target": "ES2023",
     "lib": ["ES2023"],
+    /* `jest` habilita os globais dos testes (describe/it/expect) para o editor
+       e o typecheck; `node` mantém os tipos de ambiente do runtime. */
     /* `preserve` + `bundler`: ESM sem exigir extensão nos imports relativos.
        Execução via tsx (dev e start); tsc fica só para typecheck. */
     "module": "preserve",
     "moduleResolution": "bundler",
-    "types": ["node"],
+    "types": ["node", "jest"],
     "noEmit": true,
 
     /* Checagem estrita */

@@ -40,8 +40,9 @@ npm run prisma:migrate
 | `npm run typecheck`      | Checagem de tipos sem emitir arquivos            |
 | `npm run prisma:generate`| Gera o Prisma Client                             |
 | `npm run prisma:migrate` | Cria/aplica migrações em desenvolvimento         |
+| `npm run prisma:migrate:deploy` | Aplica migrações pendentes (produção/CI)  |
 | `npm run prisma:studio`  | Abre o Prisma Studio                             |
-| `npm run db:push`        | Sincroniza o schema com o banco sem migração     |
+| `npm test`               | Testes (unit + e2e com testcontainers)           |
 
 ## Estrutura
 
