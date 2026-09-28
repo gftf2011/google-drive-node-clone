@@ -24,6 +24,46 @@ model User {
   @@map("users")
 }
 
+/// Contexto: files. Sessão de multipart upload. `ownerId`/`folderId` referenciam
+/// outros contextos por id (sem FK — contextos desacoplados). `storageUploadId` é
+/// o id do multipart NO STORAGE (S3), nulo só entre abrir e criar a sessão lá.
+model Upload {
+  id              String   @id @db.Uuid
+  ownerId         String   @map("owner_id") @db.Uuid
+  folderId        String   @map("folder_id") @db.Uuid
+  fileName        String   @map("file_name")
+  contentType     String   @map("content_type")
+  size            BigInt
+  storageKey      String   @unique @map("storage_key")
+  storageUploadId String?  @map("storage_upload_id")
+  status          String // pending | completed
+  createdAt       DateTime @map("created_at")
+  updatedAt       DateTime @map("updated_at")
+
+  @@index([ownerId])
+  @@index([folderId])
+  @@map("uploads")
+}
+
+/// Contexto: files. O arquivo no Drive (agregado durável), criado quando um
+/// multipart upload é concluído. `storageKey` aponta pro objeto no S3 (único).
+/// `ownerId`/`folderId` referenciam outros contextos por id (sem FK).
+model FileMetadata {
+  id          String   @id @db.Uuid
+  ownerId     String   @map("owner_id") @db.Uuid
+  folderId    String   @map("folder_id") @db.Uuid
+  name        String
+  contentType String   @map("content_type")
+  size        BigInt
+  storageKey  String   @unique @map("storage_key")
+  createdAt   DateTime @map("created_at")
+  updatedAt   DateTime @map("updated_at")
+
+  @@index([ownerId])
+  @@index([folderId])
+  @@map("files")
+}
+
 /// Contexto: folders. `ownerId` referencia um usuário por id (sem FK — contextos
 /// desacoplados). Pasta raiz = `parentId` nulo.
 model Folder {

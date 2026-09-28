@@ -17,5 +17,21 @@ services:
       timeout: 5s
       retries: 5
 
+  # Simulador da AWS (drop-in do LocalStack). Expõe o S3 em :4566 para o
+  # desenvolvimento — o adapter aponta o endpoint pra cá; em produção, S3 real.
+  floci:
+    image: floci/floci:latest
+    container_name: gdrive-floci
+    restart: unless-stopped
+    environment:
+      # Credenciais descartáveis de teste — combinam com o .env.example.
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+    ports:
+      - "4566:4566"
+    volumes:
+      # Necessário para os serviços do floci que sobem containers reais.
+      - /var/run/docker.sock:/var/run/docker.sock
+
 volumes:
   gdrive_pgdata:

@@ -10,6 +10,10 @@ import { DomainError } from "../../domain/errors/domain-error";
 const STATUS_BY_CODE: Record<string, number> = {
   EMAIL_ALREADY_IN_USE: 409,
   INVALID_CREDENTIALS: 401,
+  UNAUTHENTICATED: 401,
+  UPLOAD_NOT_FOUND: 404,
+  UPLOAD_NOT_OWNED: 403,
+  UPLOAD_NOT_PENDING: 409,
 };
 
 function statusForDomainError(error: DomainError): number {

@@ -1,6 +1,7 @@
 import Fastify from "fastify";
 import type { FastifyInstance } from "fastify";
 
+import { uploadRoutes } from "../../files/presentation/routes/upload.routes";
 import { registerErrorHandler } from "../../shared/presentation/http/error-handler";
 import { userRoutes } from "../../users/presentation/routes/user.routes";
 import type { Env } from "../config/env";
@@ -20,7 +21,29 @@ export async function buildApp(env: Env): Promise<FastifyInstance> {
   app.get("/health", async () => ({ status: "ok" }));
 
   const container = buildContainer(env);
+
+  // Em dev, garante o bucket no `floci` (cria + libera CORS) antes de aceitar
+  // uploads. Em produção o bucket é provisionado por infraestrutura.
+  if (env.nodeEnv !== "production") {
+    try {
+      await container.storage.ensureBucketExists();
+    } catch (error) {
+      app.log.warn(
+        { err: error },
+        "Não foi possível preparar o bucket de uploads (o floci está no ar?).",
+      );
+    }
+  }
+
   await app.register(userRoutes(container.userControllers));
+
+  // Rotas de `files` protegidas: num escopo próprio (encapsulamento do Fastify),
+  // o `preHandler` de autenticação roda antes de cada rota e NÃO vaza para as
+  // demais. O middleware é do `users`; o `main` decide onde montá-lo.
+  await app.register(async (files) => {
+    files.addHook("preHandler", container.authenticate.handle);
+    await files.register(uploadRoutes(container.uploadControllers));
+  });
 
   return app;
 }
