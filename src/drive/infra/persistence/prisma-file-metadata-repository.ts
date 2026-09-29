@@ -26,6 +26,15 @@ export class PrismaFileMetadataRepository implements FileMetadataRepository {
     return row === null ? null : this.toDomain(row);
   }
 
+  async sumSizeByOwnerId(ownerId: string): Promise<number> {
+    const result = await this.context.client.fileMetadata.aggregate({
+      where: { ownerId },
+      _sum: { size: true },
+    });
+    // `size` é BigInt; a soma cabe em `number` (cota na casa de GiB).
+    return Number(result._sum.size ?? 0n);
+  }
+
   async save(file: FileMetadata): Promise<void> {
     const data = {
       ownerId: file.ownerId.value,

@@ -41,6 +41,7 @@ function makeFolders(overrides: Partial<FolderRepository> = {}): FolderRepositor
 function makeFiles(): FileMetadataRepository {
   return {
     findById: jest.fn(),
+    sumSizeByOwnerId: jest.fn(),
     save: jest.fn(),
     findByFolderId: jest.fn().mockResolvedValue([childFile]),
     findByFolderIds: jest.fn(),

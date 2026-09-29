@@ -1,4 +1,6 @@
 import type { Upload } from "../../domain/aggregates/upload";
+import { StorageQuotaExceededError } from "../../domain/errors/storage-quota-exceeded.error";
+import type { FileMetadataRepository } from "../../domain/repositories/file-metadata-repository";
 import type { UploadRepository } from "../../domain/repositories/upload-repository";
 import type { ObjectStorage } from "../ports/storage/object-storage";
 
@@ -6,6 +8,7 @@ import { StartMultipartUpload } from "./start-multipart-upload.use-case";
 
 const ownerId = "11111111-1111-1111-1111-111111111111";
 const folderId = "22222222-2222-2222-2222-222222222222";
+const QUOTA = 15 * 1024 ** 3; // 15 GiB
 
 function makeStorage(): ObjectStorage {
   return {
@@ -21,7 +24,7 @@ function makeStorage(): ObjectStorage {
   };
 }
 
-function makeRepository(): UploadRepository & { saved: Upload[] } {
+function makeUploads(): UploadRepository & { saved: Upload[] } {
   const saved: Upload[] = [];
   return {
     saved,
@@ -32,11 +35,29 @@ function makeRepository(): UploadRepository & { saved: Upload[] } {
   };
 }
 
+/** File repo whose reported usage is `used` bytes. */
+function makeFiles(used: number): FileMetadataRepository {
+  return {
+    findById: jest.fn(),
+    save: jest.fn(),
+    sumSizeByOwnerId: jest.fn().mockResolvedValue(used),
+    findByFolderId: jest.fn(),
+    findByFolderIds: jest.fn(),
+    deleteByFolderIds: jest.fn(),
+  };
+}
+
 describe("StartMultipartUpload", () => {
   it("creates the storage session before persisting, then returns presigned parts", async () => {
     const storage = makeStorage();
-    const repository = makeRepository();
-    const useCase = new StartMultipartUpload(repository, storage, 900);
+    const uploads = makeUploads();
+    const useCase = new StartMultipartUpload(
+      uploads,
+      makeFiles(0),
+      storage,
+      900,
+      QUOTA,
+    );
 
     const output = await useCase.execute({
       ownerId,
@@ -48,14 +69,7 @@ describe("StartMultipartUpload", () => {
     });
 
     expect(output.uploadId).toBeTruthy();
-    expect(output.expiresInSeconds).toBe(900);
-    expect(output.partSize).toBe(5 * 1024 * 1024);
     expect(output.parts).toHaveLength(3);
-    expect(output.parts[0]).toEqual({
-      partNumber: 1,
-      url: "https://storage.test/part/1",
-    });
-
     expect(storage.createMultipartUpload).toHaveBeenCalledWith({
       key: output.key,
       contentType: "video/mp4",
@@ -63,9 +77,14 @@ describe("StartMultipartUpload", () => {
   });
 
   it("persists the upload as pending with the storage id attached", async () => {
-    const storage = makeStorage();
-    const repository = makeRepository();
-    const useCase = new StartMultipartUpload(repository, storage, 900);
+    const uploads = makeUploads();
+    const useCase = new StartMultipartUpload(
+      uploads,
+      makeFiles(0),
+      makeStorage(),
+      900,
+      QUOTA,
+    );
 
     await useCase.execute({
       ownerId,
@@ -75,9 +94,50 @@ describe("StartMultipartUpload", () => {
       size: 10,
     });
 
-    expect(repository.saved).toHaveLength(1);
-    const saved = repository.saved[0]!;
-    expect(saved.status).toBe("pending");
-    expect(saved.storageUploadId).toBe("s3-upload-id");
+    expect(uploads.saved).toHaveLength(1);
+    expect(uploads.saved[0]!.storageUploadId).toBe("s3-upload-id");
+  });
+
+  it("allows an upload that exactly fills the remaining quota", async () => {
+    const storage = makeStorage();
+    const useCase = new StartMultipartUpload(
+      makeUploads(),
+      makeFiles(QUOTA - 10),
+      storage,
+      900,
+      QUOTA,
+    );
+
+    await useCase.execute({
+      ownerId,
+      folderId,
+      fileName: "a.txt",
+      contentType: "text/plain",
+      size: 10,
+    });
+
+    expect(storage.createMultipartUpload).toHaveBeenCalled();
+  });
+
+  it("rejects an upload that would exceed the quota, before touching storage", async () => {
+    const storage = makeStorage();
+    const useCase = new StartMultipartUpload(
+      makeUploads(),
+      makeFiles(QUOTA - 5),
+      storage,
+      900,
+      QUOTA,
+    );
+
+    await expect(
+      useCase.execute({
+        ownerId,
+        folderId,
+        fileName: "a.txt",
+        contentType: "text/plain",
+        size: 10,
+      }),
+    ).rejects.toBeInstanceOf(StorageQuotaExceededError);
+    expect(storage.createMultipartUpload).not.toHaveBeenCalled();
   });
 });

@@ -9,6 +9,9 @@ export interface FileMetadataRepository {
   /** Busca um arquivo por id; `null` se não existir. */
   findById(id: string): Promise<FileMetadata | null>;
 
+  /** Soma, em bytes, o tamanho de todos os arquivos do dono (uso de cota). */
+  sumSizeByOwnerId(ownerId: string): Promise<number>;
+
   /** Persiste um arquivo (novo ou já existente). */
   save(file: FileMetadata): Promise<void>;
 

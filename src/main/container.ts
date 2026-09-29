@@ -102,8 +102,10 @@ export function buildContainer(env: Env): Container {
   // aberta durante as chamadas de rede ao storage.
   const startUpload = new StartMultipartUpload(
     uploadRepository,
+    fileMetadataRepository,
     storage,
     env.storage.presignExpiresInSeconds,
+    env.storage.userQuotaBytes,
   );
   // O `complete` grava duas vezes (upload concluído + arquivo criado); ele mesmo
   // abre a transação (via UoW) após a conclusão no storage, então não é decorado.

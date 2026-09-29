@@ -21,6 +21,8 @@ export interface Env {
     forcePathStyle: boolean;
     /** Validade das URLs pré-assinadas de parte, em segundos. */
     presignExpiresInSeconds: number;
+    /** Cota total de armazenamento por usuário, em bytes. */
+    userQuotaBytes: number;
   };
 }
 
@@ -61,6 +63,10 @@ export function loadEnv(): Env {
       forcePathStyle: (process.env.STORAGE_FORCE_PATH_STYLE ?? "true") === "true",
       presignExpiresInSeconds: Number(
         process.env.STORAGE_PRESIGN_EXPIRES_IN_SECONDS ?? 900,
+      ),
+      // Default: 15 GiB por usuário.
+      userQuotaBytes: Number(
+        process.env.STORAGE_USER_QUOTA_BYTES ?? 15 * 1024 ** 3,
       ),
     },
   };

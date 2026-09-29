@@ -52,6 +52,7 @@ function makeFiles(): FileMetadataRepository & { saved: FileMetadata[] } {
   return {
     saved,
     findById: jest.fn().mockResolvedValue(null),
+    sumSizeByOwnerId: jest.fn().mockResolvedValue(0),
     save: jest.fn().mockImplementation(async (file: FileMetadata) => {
       saved.push(file);
     }),

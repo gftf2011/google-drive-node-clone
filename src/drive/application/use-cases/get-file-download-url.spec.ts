@@ -36,6 +36,7 @@ function makeStorage(): ObjectStorage {
 function makeFiles(seed: FileMetadata | null): FileMetadataRepository {
   return {
     findById: jest.fn().mockResolvedValue(seed),
+    sumSizeByOwnerId: jest.fn(),
     save: jest.fn(),
     findByFolderId: jest.fn(),
     findByFolderIds: jest.fn(),

@@ -48,6 +48,7 @@ function makeFolders(target: Folder | null): FolderRepository {
 function makeFiles(seed: FileMetadata[]): FileMetadataRepository {
   return {
     findById: jest.fn(),
+    sumSizeByOwnerId: jest.fn(),
     save: jest.fn(),
     findByFolderId: jest.fn(),
     findByFolderIds: jest.fn().mockResolvedValue(seed),

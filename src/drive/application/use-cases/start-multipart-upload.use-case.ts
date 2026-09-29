@@ -1,5 +1,7 @@
 import type { UseCase } from "../../../shared/application/use-case";
 import { Upload } from "../../domain/aggregates/upload";
+import { StorageQuotaExceededError } from "../../domain/errors/storage-quota-exceeded.error";
+import type { FileMetadataRepository } from "../../domain/repositories/file-metadata-repository";
 import type { UploadRepository } from "../../domain/repositories/upload-repository";
 import { PartPlan } from "../../domain/value-objects/part-plan";
 import type { ObjectStorage } from "../ports/storage/object-storage";
@@ -56,8 +58,11 @@ export class StartMultipartUpload
 {
   constructor(
     private readonly uploads: UploadRepository,
+    private readonly files: FileMetadataRepository,
     private readonly storage: ObjectStorage,
     private readonly presignExpiresInSeconds: number,
+    /** Cota total de armazenamento por usuário, em bytes. */
+    private readonly userQuotaBytes: number,
   ) {}
 
   async execute(
@@ -70,6 +75,19 @@ export class StartMultipartUpload
       contentType: input.contentType,
       size: input.size,
     });
+
+    // Rejeita ANTES de subir bytes: uso atual (arquivos concluídos) + o tamanho
+    // declarado não pode ultrapassar a cota. Uploads pendentes não são contados
+    // (evita travar o usuário com sessões abandonadas); há uma janela de corrida
+    // entre uploads concorrentes, aceitável para o MVP.
+    const used = await this.files.sumSizeByOwnerId(upload.ownerId.value);
+    if (used + upload.size.bytes > this.userQuotaBytes) {
+      throw new StorageQuotaExceededError(
+        this.userQuotaBytes,
+        used,
+        upload.size.bytes,
+      );
+    }
 
     const storageUploadId = await this.storage.createMultipartUpload({
       key: upload.storageKey.value,

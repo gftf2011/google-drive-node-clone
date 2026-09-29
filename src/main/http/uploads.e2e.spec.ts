@@ -213,6 +213,21 @@ describe("Multipart upload (start -> PUT -> complete)", () => {
     expect(res.status).toBe(403);
     expect(res.body.error).toBe("UPLOAD_NOT_OWNED");
   });
+
+  it("rejects an upload that exceeds the 15 GiB quota (507)", async () => {
+    const token = await signUp();
+    const res = await request(env.app.server)
+      .post("/uploads")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        folderId: randomUUID(),
+        fileName: "huge.bin",
+        contentType: "application/octet-stream",
+        size: 16 * 1024 ** 3, // 16 GiB > 15 GiB
+      });
+    expect(res.status).toBe(507);
+    expect(res.body.error).toBe("STORAGE_QUOTA_EXCEEDED");
+  });
 });
 
 /** Uploads a file and returns its id (via the full multipart flow). */
