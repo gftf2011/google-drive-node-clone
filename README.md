@@ -1,122 +1,127 @@
 # google-drive-node-clone
 
-Clone das funcionalidades do Google Drive em **Node.js** com **TypeScript**, **Fastify** e **Prisma ORM**, seguindo **Clean Architecture** e **DDD**.
+A clone of Google Drive's core features in **Node.js** with **TypeScript**, **Fastify** and **Prisma ORM**, following **Clean Architecture** and **DDD**.
 
 ## Stack
 
-- **Node.js 24 LTS** (Krypton) — versão fixada em `.nvmrc`
-- **TypeScript 7** com ESM (executado via **tsx**; `tsc` só para checagem de tipos)
-- **Fastify 5** na borda HTTP
-- **Prisma ORM 7** com driver adapter para PostgreSQL (`@prisma/adapter-pg`)
-- **AWS SDK v3 (S3)** para armazenamento de objetos; **floci** como simulador da AWS em dev
-- **Jest + supertest + testcontainers** para testes (unit, integração e e2e)
+- **Node.js 24 LTS** (Krypton) — version pinned in `.nvmrc`
+- **TypeScript 7** with ESM (run via **tsx**; `tsc` is used only for type checking)
+- **Fastify 5** at the HTTP edge
+- **Prisma ORM 7** with a driver adapter for PostgreSQL (`@prisma/adapter-pg`)
+- **AWS SDK v3 (S3)** for object storage; **floci** as the AWS simulator in dev
+- **Jest + supertest + testcontainers** for tests (unit, integration and e2e)
 
-## Arquitetura
+## Architecture
 
-Clean Architecture + DDD, com dois **bounded contexts**:
+Clean Architecture + DDD, with two **bounded contexts**:
 
-- **`users`** — identidade e autenticação (cadastro, login, JWT).
-- **`drive`** — a árvore do Drive: **pastas**, **arquivos** (`FileMetadata`) e **uploads** (sessão de multipart). Pasta e arquivo vivem no mesmo contexto, então a listagem e a deleção em cascata acontecem sem cruzar fronteiras.
+- **`users`** — identity and authentication (sign up, sign in, JWT).
+- **`drive`** — the Drive tree: **folders**, **files** (`FileMetadata`) and **uploads** (the multipart session). Folder and file live in the same context, so listing and cascading deletion happen without crossing boundaries.
 
-Cada contexto é organizado em camadas: `domain` (agregados, value objects, erros, contratos de repositório), `application` (casos de uso e ports), `infra` (Prisma, S3) e `presentation` (controllers e rotas Fastify). A dependência aponta sempre para dentro; o `main` é o **composition root** — o único lugar que conhece todos os contextos.
+Each context is organized in layers: `domain` (aggregates, value objects, errors, repository contracts), `application` (use cases and ports), `infra` (Prisma, S3) and `presentation` (Fastify controllers and routes). Dependencies always point inward; `main` is the **composition root** — the only place that knows every context.
 
-O envio e o download dos bytes não passam pela aplicação: o backend gera **URLs pré-assinadas** e o cliente fala direto com o storage.
+Uploading and downloading bytes never go through the application: the backend issues **presigned URLs** and the client talks to the storage directly.
 
-## Pré-requisitos
+## Scope & simplifications
 
-- Node.js 24+ (`nvm use` para usar a versão do `.nvmrc`)
-- Docker (para subir PostgreSQL + floci via `docker-compose`)
+This project focuses on the storage domain (accounts, the folder/file tree, uploads and downloads). To keep it simple, **client synchronization was intentionally left out** — there is no real-time or offline sync between devices (no change feed, delta/cursor API, conflict resolution, or push channel). Clients read the current state on demand via the listing endpoints. Other deliberate simplifications: no background job pipeline (folder deletion and its storage cleanup run synchronously) and a per-user storage quota enforced at upload start only.
 
-## Configuração
+## Prerequisites
+
+- Node.js 24+ (`nvm use` to match `.nvmrc`)
+- Docker (to run PostgreSQL + floci via `docker-compose`)
+
+## Setup
 
 ```bash
-# 1. Instalar dependências
+# 1. Install dependencies
 npm install
 
-# 2. Subir PostgreSQL + floci (simulador S3/AWS)
+# 2. Start PostgreSQL + floci (S3/AWS simulator)
 docker compose up -d
 
-# 3. Criar o .env a partir do exemplo (já combina com o docker-compose)
+# 3. Create .env from the example (already matches docker-compose)
 cp .env.example .env
 
-# 4. Gerar o Prisma Client
+# 4. Generate the Prisma Client
 npm run prisma:generate
 
-# 5. Aplicar as migrations
+# 5. Apply the migrations
 npm run prisma:migrate:deploy
 
-# 6. Rodar em desenvolvimento
+# 6. Run in development
 npm run dev
 ```
 
-O bucket de uploads é criado automaticamente no floci ao subir o servidor em dev.
+The uploads bucket is created automatically on floci when the dev server starts.
 
 ## Scripts
 
-| Comando                         | Descrição                                          |
-| ------------------------------- | -------------------------------------------------- |
-| `npm run dev`                   | Sobe o servidor com hot-reload (`tsx watch`)       |
-| `npm start`                     | Sobe o servidor (`tsx`)                            |
-| `npm run typecheck`             | Checagem de tipos (produção + testes), sem emitir  |
-| `npm run prisma:generate`       | Gera o Prisma Client                               |
-| `npm run prisma:migrate`        | Cria/aplica migrations em desenvolvimento          |
-| `npm run prisma:migrate:deploy` | Aplica migrations pendentes (produção/CI)          |
-| `npm run prisma:studio`         | Abre o Prisma Studio                               |
-| `npm test`                      | Toda a suíte (unit + integração + e2e)             |
-| `npm run test:unit`             | Apenas testes de unidade (sem containers)          |
-| `npm run test:integration`      | Testes de integração (Postgres + floci)            |
-| `npm run test:e2e`              | Testes e2e das rotas (Postgres + floci)            |
+| Command                         | Description                                       |
+| ------------------------------- | ------------------------------------------------- |
+| `npm run dev`                   | Start the server with hot-reload (`tsx watch`)    |
+| `npm start`                     | Start the server (`tsx`)                          |
+| `npm run typecheck`             | Type-check (production + tests), no emit          |
+| `npm run prisma:generate`       | Generate the Prisma Client                        |
+| `npm run prisma:migrate`        | Create/apply migrations in development            |
+| `npm run prisma:migrate:deploy` | Apply pending migrations (production/CI)          |
+| `npm run prisma:studio`         | Open Prisma Studio                                |
+| `npm test`                      | Full suite (unit + integration + e2e)             |
+| `npm run test:unit`             | Unit tests only (no containers)                   |
+| `npm run test:integration`      | Integration tests (Postgres + floci)              |
+| `npm run test:e2e`              | Route e2e tests (Postgres + floci)                |
 
-Os testes de integração e e2e sobem containers efêmeros via testcontainers (exigem Docker) e aplicam as migrations automaticamente.
+Integration and e2e tests spin up ephemeral containers via testcontainers (Docker required) and apply the migrations automatically. Load tests (k6) live in [`load/`](load/README.md).
 
 ## API
 
-Autenticação por `Authorization: Bearer <token>`. O token vem de `POST /users` ou `POST /sessions`.
+Authentication via `Authorization: Bearer <token>`. The token comes from `POST /users` or `POST /sessions`.
 
-| Método   | Rota                          | Auth | Descrição                                              |
-| -------- | ----------------------------- | :--: | ------------------------------------------------------ |
-| `POST`   | `/users`                      |  —   | Cadastro; retorna `{ token }`                          |
-| `POST`   | `/sessions`                   |  —   | Login; retorna `{ token }`                             |
-| `POST`   | `/uploads`                    |  ✓   | Inicia multipart; retorna `{ uploadId, partSize, parts[] }` |
-| `POST`   | `/uploads/:uploadId/complete` |  ✓   | Conclui o upload e cria o arquivo; retorna `{ fileId, key }` |
-| `GET`    | `/files/:fileId/download-url` |  ✓   | URL pré-assinada de download                           |
-| `POST`   | `/folders`                    |  ✓   | Cria uma pasta (`parentId` opcional = raiz)            |
-| `GET`    | `/folders`                    |  ✓   | Lista o conteúdo da raiz (`?sort=recent\|name`)         |
-| `GET`    | `/folders/:folderId`          |  ✓   | Lista o conteúdo da pasta (`?sort=recent\|name`)        |
-| `DELETE` | `/folders/:folderId`          |  ✓   | Deleta a pasta e toda a subárvore (pastas + arquivos)  |
-| `GET`    | `/health`                     |  —   | Healthcheck                                            |
+| Method   | Route                         | Auth | Description                                              |
+| -------- | ----------------------------- | :--: | ------------------------------------------------------- |
+| `POST`   | `/users`                      |  —   | Sign up; returns `{ token }`                            |
+| `POST`   | `/sessions`                   |  —   | Sign in; returns `{ token }`                            |
+| `POST`   | `/uploads`                    |  ✓   | Start a multipart upload; returns `{ uploadId, partSize, parts[] }` |
+| `POST`   | `/uploads/:uploadId/complete` |  ✓   | Finish the upload and create the file; returns `{ fileId, key }` |
+| `GET`    | `/files/:fileId/download-url` |  ✓   | Presigned download URL                                  |
+| `POST`   | `/folders`                    |  ✓   | Create a folder (`parentId` optional = root)            |
+| `GET`    | `/folders`                    |  ✓   | List the root contents (`?sort=recent\|name`)            |
+| `GET`    | `/folders/:folderId`          |  ✓   | List the folder contents (`?sort=recent\|name`)          |
+| `DELETE` | `/folders/:folderId`          |  ✓   | Delete the folder and its whole subtree (folders + files) |
+| `GET`    | `/health`                     |  —   | Healthcheck                                             |
 
-Fluxo de upload: `POST /uploads` → o cliente faz `PUT` de cada parte nas URLs pré-assinadas → `POST /uploads/:id/complete` com as ETags.
+Upload flow: `POST /uploads` → the client `PUT`s each part to the presigned URLs → `POST /uploads/:id/complete` with the ETags. Each user has a storage quota (15 GiB by default); a start that would exceed it is rejected with `507`.
 
-## Estrutura
+## Project layout
 
 ```
 .
 ├── prisma/
-│   ├── schema.prisma            # Modelos e datasource
-│   └── migrations/              # Migrations versionadas
+│   ├── schema.prisma            # Models and datasource
+│   └── migrations/              # Versioned migrations
 ├── src/
-│   ├── users/                   # Contexto: identidade e autenticação
-│   │   ├── domain/              #   agregados, value objects, erros, repositórios
-│   │   ├── application/         #   casos de uso e ports (ex.: token generator/verifier)
-│   │   ├── infra/               #   Prisma, provedores (JWT)
-│   │   └── presentation/        #   controllers, rotas, middleware de auth
-│   ├── drive/                   # Contexto: pastas + arquivos + uploads
+│   ├── users/                   # Context: identity and authentication
+│   │   ├── domain/              #   aggregates, value objects, errors, repositories
+│   │   ├── application/         #   use cases and ports (e.g. token generator/verifier)
+│   │   ├── infra/               #   Prisma, providers (JWT)
+│   │   └── presentation/        #   controllers, routes, auth middleware
+│   ├── drive/                   # Context: folders + files + uploads
 │   │   ├── domain/
-│   │   ├── application/         #   casos de uso, ports (ObjectStorage), event-handlers
+│   │   ├── application/         #   use cases, ports (ObjectStorage), event handlers
 │   │   ├── infra/               #   Prisma (repos), S3 (adapter)
 │   │   └── presentation/
-│   ├── shared/                  # Kernel compartilhado
+│   ├── shared/                  # Shared kernel
 │   │   ├── domain/              #   AggregateRoot, DomainEvent, Uuid, DomainError
 │   │   ├── application/         #   UseCase, UnitOfWork, DomainEventPublisher, ListSort
-│   │   ├── infra/               #   Prisma client, dispatcher de eventos
-│   │   └── testing/             #   helpers de testcontainers (Postgres/floci) e app e2e
+│   │   ├── infra/               #   Prisma client, event dispatcher
+│   │   └── testing/             #   testcontainers helpers (Postgres/floci) and e2e app
 │   └── main/                    # Composition root
-│       ├── config/              #   carregamento de env
-│       ├── container.ts         #   injeção de dependências
-│       └── http/                #   montagem do Fastify + rotas
+│       ├── config/              #   env loading
+│       ├── container.ts         #   dependency injection
+│       └── http/                #   Fastify assembly + routes
+├── load/                        # k6 load tests
 ├── docker-compose.yml           # PostgreSQL + floci
-├── prisma7.config.ts            # Configuração do Prisma (carrega .env)
-├── jest.config.mjs              # Projetos jest: unit / integration / e2e
+├── prisma7.config.ts            # Prisma config (loads .env)
+├── jest.config.mjs              # jest projects: unit / integration / e2e
 └── tsconfig.json
 ```
