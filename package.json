@@ -18,7 +18,8 @@
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --runInBand",
     "test:unit": "NODE_OPTIONS=--experimental-vm-modules jest --selectProjects unit",
     "test:integration": "NODE_OPTIONS=--experimental-vm-modules jest --selectProjects integration --runInBand",
-    "test:e2e": "NODE_OPTIONS=--experimental-vm-modules jest --selectProjects e2e --runInBand"
+    "test:e2e": "NODE_OPTIONS=--experimental-vm-modules jest --selectProjects e2e --runInBand",
+    "load:many-users-upload": "k6 run load/many-users-upload.load.js"
   },
   "repository": {
     "type": "git",
