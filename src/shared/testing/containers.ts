@@ -20,7 +20,10 @@ export interface StartedPostgres {
  * import — connects to this container; import the client only afterwards.
  */
 export async function startPostgres(): Promise<StartedPostgres> {
-  const container = await new PostgreSqlContainer("postgres:16-alpine").start();
+  // pgvector/pgvector:pg16 = postgres 16 + extensão `vector` (rag_chunks).
+  const container = await new PostgreSqlContainer(
+    "pgvector/pgvector:pg16",
+  ).start();
   const url = container.getConnectionUri();
   process.env.DATABASE_URL = url;
   execFileSync("npx", ["prisma", "migrate", "deploy"], {

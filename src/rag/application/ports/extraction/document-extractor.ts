@@ -6,6 +6,14 @@ export interface ExtractedElement {
   type: string;
   /** Texto do elemento. */
   text: string;
+  /** Página de origem, quando a ferramenta a informa (1-based). */
+  page?: number;
+  /**
+   * Metadado estrutural do elemento que a ferramenta devolve e que vale
+   * preservar (ex.: `text_as_html` de uma tabela, coordenadas/bbox). Propagado
+   * para o chunk — antes era descartado.
+   */
+  metadata?: Record<string, unknown>;
 }
 
 /** Resultado normalizado da extração, independente da ferramenta usada. */

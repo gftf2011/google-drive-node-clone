@@ -1,9 +1,14 @@
 import "dotenv/config";
 
+import { SemanticChunker } from "../rag/infra/chunking/semantic-chunker";
+import { TransformersJsEmbedder } from "../rag/infra/embedding/transformers-js-embedder";
+import { LlmChunkEnricher } from "../rag/infra/enrichment/llm-chunk-enricher";
+import { OllamaTextGenerator } from "../rag/infra/enrichment/ollama-text-generator";
 import { DoclingDocumentExtractor } from "../rag/infra/extraction/docling-document-extractor";
 import { RoutingDocumentExtractor } from "../rag/infra/extraction/routing-document-extractor";
 import { TikaDocumentExtractor } from "../rag/infra/extraction/tika-document-extractor";
 import { UnstructuredDocumentExtractor } from "../rag/infra/extraction/unstructured-document-extractor";
+import { PgVectorChunkRepository } from "../rag/infra/persistence/pg-vector-chunk-repository";
 import { PrismaRagDocumentRepository } from "../rag/infra/persistence/prisma-rag-document-repository";
 import { S3IngestionStorage } from "../rag/infra/storage/s3-ingestion-storage";
 import { IngestDocument } from "../rag/application/use-cases/ingest-document.use-case";
@@ -31,6 +36,7 @@ async function bootstrap(): Promise<void> {
 
   const context = new PrismaTransactionContext(prisma);
   const documents = new PrismaRagDocumentRepository(context);
+  const chunkRepository = new PgVectorChunkRepository(context);
 
   const storage = new S3IngestionStorage({
     region: env.storage.region,
@@ -52,11 +58,38 @@ async function bootstrap(): Promise<void> {
     tika: new TikaDocumentExtractor(env.ingestion.tikaUrl),
   });
 
+  // Embedder in-process (Transformers.js) — usado tanto para detectar as
+  // fronteiras semânticas quanto para gerar o embedding de cada chunk.
+  const embedder = new TransformersJsEmbedder({
+    model: env.ingestion.embeddingModel,
+  });
+  const chunker = new SemanticChunker(embedder, env.ingestion.chunk);
+
+  // Enriquecimento por LLM self-hosted (Ollama), com degradação graciosa.
+  const enricher = new LlmChunkEnricher(
+    new OllamaTextGenerator({
+      baseUrl: env.ingestion.enrichment.llmUrl,
+      model: env.ingestion.enrichment.llmModel,
+      timeoutMs: env.ingestion.enrichment.llmTimeoutMs,
+      maxRetries: env.ingestion.enrichment.llmMaxRetries,
+    }),
+    {
+      maxKeywords: env.ingestion.enrichment.maxKeywords,
+      maxQuestions: env.ingestion.enrichment.maxQuestions,
+      maxInputChars: env.ingestion.enrichment.maxInputChars,
+    },
+  );
+
   const ingestDocument = new IngestDocument(
     documents,
     storage,
     extractor,
     storage,
+    chunker,
+    embedder,
+    enricher,
+    chunkRepository,
+    env.ingestion.enrichment.concurrency,
   );
 
   let running = true;

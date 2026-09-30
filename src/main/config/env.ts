@@ -26,6 +26,12 @@ export interface Env {
   };
   /** Pipeline de ingestão de documentos (contexto `rag`). */
   ingestion: {
+    /**
+     * `routing` = roteia por formato (PDF→Docling, ricos→Unstructured, resto→
+     * Tika). `tika-only` = só Tika, para o modo LITE (não sobe Docling/
+     * Unstructured).
+     */
+    extractorMode: "routing" | "tika-only";
     /** URL do Apache Tika Server (extrator universal / fallback). */
     tikaUrl: string;
     /** URL da API do Unstructured (documentos ricos). */
@@ -42,6 +48,33 @@ export interface Env {
     workerBatchSize: number;
     /** Intervalo de sondagem da fila quando ela está vazia, em ms. */
     workerPollIntervalMs: number;
+    /** Chunking (fatiamento estrutura-primeiro + semântico). */
+    chunk: {
+      maxChars: number;
+      minChars: number;
+      breakpointPercentile: number;
+    };
+    /**
+     * Modelo de embeddings (Transformers.js, in-process). Deve casar com a
+     * dimensão da coluna `embedding` de `rag_chunks` (bge-small = 384).
+     */
+    embeddingModel: string;
+    /** Enriquecimento por LLM (resumo, keywords, perguntas hipotéticas). */
+    enrichment: {
+      /** Liga/desliga o enriquecimento. `false` = modo LITE, sem LLM/Ollama. */
+      enabled: boolean;
+      /** URL do LLM (Ollama self-hosted). */
+      llmUrl: string;
+      /** Modelo do LLM (ex.: "llama3.1"). */
+      llmModel: string;
+      llmTimeoutMs: number;
+      llmMaxRetries: number;
+      /** Enriquecimentos simultâneos por documento. */
+      concurrency: number;
+      maxKeywords: number;
+      maxQuestions: number;
+      maxInputChars: number;
+    };
   };
 }
 
@@ -89,6 +122,10 @@ export function loadEnv(): Env {
       ),
     },
     ingestion: {
+      extractorMode:
+        process.env.INGESTION_EXTRACTOR_MODE === "tika-only"
+          ? "tika-only"
+          : "routing",
       tikaUrl: process.env.INGESTION_TIKA_URL ?? "http://localhost:9998",
       unstructuredUrl:
         process.env.INGESTION_UNSTRUCTURED_URL ?? "http://localhost:8000",
@@ -107,6 +144,28 @@ export function loadEnv(): Env {
       workerPollIntervalMs: Number(
         process.env.INGESTION_WORKER_POLL_INTERVAL_MS ?? 2000,
       ),
+      chunk: {
+        maxChars: Number(process.env.INGESTION_CHUNK_MAX_CHARS ?? 1200),
+        minChars: Number(process.env.INGESTION_CHUNK_MIN_CHARS ?? 200),
+        breakpointPercentile: Number(
+          process.env.INGESTION_CHUNK_BREAKPOINT_PERCENTILE ?? 90,
+        ),
+      },
+      embeddingModel:
+        process.env.INGESTION_EMBEDDING_MODEL ?? "Xenova/bge-small-en-v1.5",
+      enrichment: {
+        // Default: desligado — o modo seguro para máquinas modestas. Ligue
+        // explicitamente (com Ollama disponível) para gerar os metadados.
+        enabled: process.env.INGESTION_ENRICH_ENABLED === "true",
+        llmUrl: process.env.INGESTION_LLM_URL ?? "http://localhost:11434",
+        llmModel: process.env.INGESTION_LLM_MODEL ?? "llama3.1",
+        llmTimeoutMs: Number(process.env.INGESTION_LLM_TIMEOUT_MS ?? 30000),
+        llmMaxRetries: Number(process.env.INGESTION_LLM_MAX_RETRIES ?? 2),
+        concurrency: Number(process.env.INGESTION_ENRICH_CONCURRENCY ?? 4),
+        maxKeywords: Number(process.env.INGESTION_ENRICH_MAX_KEYWORDS ?? 6),
+        maxQuestions: Number(process.env.INGESTION_ENRICH_MAX_QUESTIONS ?? 3),
+        maxInputChars: Number(process.env.INGESTION_ENRICH_MAX_INPUT_CHARS ?? 4000),
+      },
     },
   };
 }

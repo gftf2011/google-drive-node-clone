@@ -1,6 +1,8 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    # pgvector/pgvector é um superset do postgres:16 com a extensão `vector`
+    # (usada por rag_chunks). Drop-in: mesmas credenciais, dados e migrations.
+    image: pgvector/pgvector:pg16
     container_name: gdrive-postgres
     restart: unless-stopped
     environment:
@@ -44,10 +46,15 @@ services:
     ports:
       - "9998:9998"
 
+  # --- Serviços PESADOS: só no profile `full` (exigem bastante RAM/disco). ---
+  # Em máquinas modestas, rode sem eles (perfil lite): o router cai para o Tika
+  # e o enriquecimento é desligado. Ver INGESTION_EXTRACTOR_MODE/ENRICH_ENABLED.
+
   # Unstructured API — documentos ricos/semiestruturados (Office, HTML, e-mail).
   unstructured:
     image: downloads.unstructured.io/unstructured-io/unstructured-api:latest
     container_name: gdrive-unstructured
+    profiles: ["full"]
     restart: unless-stopped
     ports:
       - "8000:8000"
@@ -56,11 +63,28 @@ services:
   docling:
     image: ghcr.io/docling-project/docling-serve:latest
     container_name: gdrive-docling
+    profiles: ["full"]
     restart: unless-stopped
     environment:
       DOCLING_SERVE_ENABLE_UI: "false"
     ports:
       - "5001:5001"
 
+  # Ollama — LLM self-hosted para o enriquecimento (resumo/keywords/perguntas).
+  # Sem chave de API. Baixe o modelo uma vez:
+  #   docker exec gdrive-ollama ollama pull llama3.1
+  # Obs.: no Mac o container não usa GPU; em máquinas modestas prefira o Ollama
+  # NATIVO no host e mantenha este serviço fora (perfil lite).
+  ollama:
+    image: ollama/ollama:latest
+    container_name: gdrive-ollama
+    profiles: ["full"]
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - gdrive_ollama:/root/.ollama
+
 volumes:
   gdrive_pgdata:
+  gdrive_ollama:
