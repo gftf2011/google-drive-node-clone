@@ -64,6 +64,33 @@ model FileMetadata {
   @@map("files")
 }
 
+/// Contexto: rag. Estado de ingestão por arquivo — também é a fila do worker
+/// (status "pending"). Uma linha por arquivo (`fileId` é a PK). `contentHash`
+/// (SHA-256 dos bytes) é a chave de deduplicação; `chunkCount`/`indexedAt` são
+/// preenchidos ao concluir a extração (e recebem os chunks/embeddings do RAG no
+/// futuro). Referencia dono/pasta por id (sem FK — contextos desacoplados).
+model RagDocument {
+  fileId      String    @id @map("file_id") @db.Uuid
+  ownerId     String    @map("owner_id") @db.Uuid
+  folderId    String    @map("folder_id") @db.Uuid
+  storageKey  String    @map("storage_key")
+  contentType String    @map("content_type")
+  fileName    String    @map("file_name")
+  status      String
+  error       String?
+  contentHash String?   @map("content_hash")
+  chunkCount  Int       @default(0) @map("chunk_count")
+  indexedAt   DateTime? @map("indexed_at")
+  createdAt   DateTime  @map("created_at")
+  updatedAt   DateTime  @map("updated_at")
+
+  @@index([status])
+  @@index([ownerId])
+  @@index([folderId])
+  @@index([contentHash])
+  @@map("rag_documents")
+}
+
 /// Contexto: folders. `ownerId` referencia um usuário por id (sem FK — contextos
 /// desacoplados). Pasta raiz = `parentId` nulo.
 model Folder {

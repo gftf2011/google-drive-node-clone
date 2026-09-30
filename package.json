@@ -10,6 +10,8 @@
   "scripts": {
     "dev": "tsx watch src/main/server.ts",
     "start": "tsx src/main/server.ts",
+    "ingest:worker": "tsx src/main/ingestion-worker.ts",
+    "ingest:worker:dev": "tsx watch src/main/ingestion-worker.ts",
     "typecheck": "tsc --noEmit",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",

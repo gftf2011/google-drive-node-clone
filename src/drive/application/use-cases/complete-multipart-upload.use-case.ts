@@ -1,3 +1,4 @@
+import type { DomainEventPublisher } from "../../../shared/application/ports/domain-event-publisher";
 import type { UnitOfWork } from "../../../shared/application/ports/unit-of-work";
 import type { UseCase } from "../../../shared/application/use-case";
 import { FileMetadata } from "../../domain/aggregates/file-metadata";
@@ -18,6 +19,12 @@ export interface CompleteMultipartUploadInput {
   uploadId: string;
   ownerId: string;
   parts: { partNumber: number; etag: string }[];
+  /**
+   * SHA-256 (hex) do arquivo, calculado pelo cliente durante o upload. Opcional:
+   * quando presente, a ingestão deduplica sem baixar o objeto (a chave de dedup
+   * nasce junto com o arquivo, em vez de ser recalculada pelo worker).
+   */
+  contentHash?: string;
 }
 
 export interface CompleteMultipartUploadOutput {
@@ -53,6 +60,7 @@ export class CompleteMultipartUpload
     private readonly files: FileMetadataRepository,
     private readonly storage: ObjectStorage,
     private readonly unitOfWork: UnitOfWork,
+    private readonly eventPublisher: DomainEventPublisher,
   ) {}
 
   async execute(
@@ -85,13 +93,18 @@ export class CompleteMultipartUpload
       contentType: upload.contentType.value,
       size: upload.size.bytes,
       storageKey: upload.storageKey.value,
+      contentHash: input.contentHash,
     });
 
     // As duas escritas commitam juntas: o upload vira `completed` e o arquivo
-    // passa a existir na pasta no mesmo instante.
+    // passa a existir na pasta no mesmo instante. Os eventos do arquivo (ex.:
+    // `FileCreated`, que enfileira a ingestão) são publicados DENTRO da mesma
+    // transação — o dispatcher é síncrono, então a enfileiração da ingestão
+    // commita junto com o arquivo (ou reverte junto).
     await this.unitOfWork.runInTransaction(async () => {
       await this.uploads.save(upload);
       await this.files.save(file);
+      await this.eventPublisher.publishAll(file.pullDomainEvents());
     });
 
     return {

@@ -24,6 +24,25 @@ export interface Env {
     /** Cota total de armazenamento por usuário, em bytes. */
     userQuotaBytes: number;
   };
+  /** Pipeline de ingestão de documentos (contexto `rag`). */
+  ingestion: {
+    /** URL do Apache Tika Server (extrator universal / fallback). */
+    tikaUrl: string;
+    /** URL da API do Unstructured (documentos ricos). */
+    unstructuredUrl: string;
+    /** Chave de API do Unstructured (opcional na imagem self-hosted). */
+    unstructuredApiKey?: string;
+    /** URL do docling-serve (especialista em PDF). */
+    doclingUrl: string;
+    /** Prefixo das chaves dos artefatos extraídos no storage. */
+    extractedPrefix: string;
+    /** Validade da URL assinada entregue ao extrator, em segundos. */
+    sourceUrlExpiresInSeconds: number;
+    /** Quantos documentos o worker reivindica por ciclo. */
+    workerBatchSize: number;
+    /** Intervalo de sondagem da fila quando ela está vazia, em ms. */
+    workerPollIntervalMs: number;
+  };
 }
 
 const DEV_JWT_SECRET = "dev-only-insecure-secret-change-me-please";
@@ -67,6 +86,26 @@ export function loadEnv(): Env {
       // Default: 15 GiB por usuário.
       userQuotaBytes: Number(
         process.env.STORAGE_USER_QUOTA_BYTES ?? 15 * 1024 ** 3,
+      ),
+    },
+    ingestion: {
+      tikaUrl: process.env.INGESTION_TIKA_URL ?? "http://localhost:9998",
+      unstructuredUrl:
+        process.env.INGESTION_UNSTRUCTURED_URL ?? "http://localhost:8000",
+      unstructuredApiKey:
+        process.env.INGESTION_UNSTRUCTURED_API_KEY !== undefined &&
+        process.env.INGESTION_UNSTRUCTURED_API_KEY.length > 0
+          ? process.env.INGESTION_UNSTRUCTURED_API_KEY
+          : undefined,
+      doclingUrl: process.env.INGESTION_DOCLING_URL ?? "http://localhost:5001",
+      extractedPrefix: process.env.INGESTION_EXTRACTED_PREFIX ?? "extracted/",
+      // Default: 1 h — cobre a extração de documentos grandes.
+      sourceUrlExpiresInSeconds: Number(
+        process.env.INGESTION_SOURCE_URL_EXPIRES_IN_SECONDS ?? 3600,
+      ),
+      workerBatchSize: Number(process.env.INGESTION_WORKER_BATCH_SIZE ?? 10),
+      workerPollIntervalMs: Number(
+        process.env.INGESTION_WORKER_POLL_INTERVAL_MS ?? 2000,
       ),
     },
   };

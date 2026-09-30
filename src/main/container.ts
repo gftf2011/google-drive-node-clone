@@ -1,4 +1,5 @@
 import { CreateRootFolderOnUserCreated } from "../drive/application/event-handlers/create-root-folder-on-user-created";
+import { FileCreated } from "../drive/domain/events/file-created.event";
 import { CompleteMultipartUpload } from "../drive/application/use-cases/complete-multipart-upload.use-case";
 import { CreateFolder } from "../drive/application/use-cases/create-folder.use-case";
 import { CreateRootFolder } from "../drive/application/use-cases/create-root-folder.use-case";
@@ -19,6 +20,9 @@ import { StartMultipartUploadController } from "../drive/presentation/controller
 import type { FileControllers } from "../drive/presentation/routes/file.routes";
 import type { FolderControllers } from "../drive/presentation/routes/folder.routes";
 import type { UploadControllers } from "../drive/presentation/routes/upload.routes";
+import { EnqueueIngestionOnFileCreated } from "../rag/application/event-handlers/enqueue-ingestion-on-file-created";
+import { EnqueueDocumentIngestion } from "../rag/application/use-cases/enqueue-document-ingestion.use-case";
+import { PrismaRagDocumentRepository } from "../rag/infra/persistence/prisma-rag-document-repository";
 import { TransactionalUseCase } from "../shared/application/transactional-use-case";
 import { prisma } from "../shared/infra/database/prisma/client";
 import { PrismaTransactionContext } from "../shared/infra/database/prisma/prisma-transaction-context";
@@ -66,6 +70,7 @@ export function buildContainer(env: Env): Container {
   const folderRepository = new PrismaFolderRepository(unitOfWork);
   const uploadRepository = new PrismaUploadRepository(unitOfWork);
   const fileMetadataRepository = new PrismaFileMetadataRepository(unitOfWork);
+  const ragDocumentRepository = new PrismaRagDocumentRepository(unitOfWork);
   const tokenGenerator = new JwtTokenGenerator({
     secret: env.jwt.secret,
     expiresInSeconds: env.jwt.expiresInSeconds,
@@ -86,6 +91,14 @@ export function buildContainer(env: Env): Container {
   eventPublisher.register(
     UserCreated.EVENT_NAME,
     new CreateRootFolderOnUserCreated(new CreateRootFolder(folderRepository)),
+  );
+  // drive -> rag: enfileira a ingestão do documento ao criar um arquivo. O
+  // handler só insere a linha `pending` (barato) — a extração fica para o worker.
+  eventPublisher.register(
+    FileCreated.EVENT_NAME,
+    new EnqueueIngestionOnFileCreated(
+      new EnqueueDocumentIngestion(ragDocumentRepository),
+    ),
   );
 
   // --- Casos de uso ---
@@ -114,6 +127,7 @@ export function buildContainer(env: Env): Container {
     fileMetadataRepository,
     storage,
     unitOfWork,
+    eventPublisher,
   );
   // Download — somente leitura, devolve uma URL pré-assinada de GET.
   const getFileDownloadUrl = new GetFileDownloadUrl(

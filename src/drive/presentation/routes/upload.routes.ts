@@ -45,6 +45,9 @@ const completeBodySchema = {
   required: ["parts"],
   additionalProperties: false,
   properties: {
+    // SHA-256 (hex) do arquivo inteiro, calculado pelo cliente durante o upload.
+    // Opcional: quando presente, a ingestão deduplica sem baixar o objeto.
+    contentHash: { type: "string", pattern: "^[0-9a-fA-F]{64}$" },
     parts: {
       type: "array",
       minItems: 1,

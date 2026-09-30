@@ -33,5 +33,34 @@ services:
       # Necessário para os serviços do floci que sobem containers reais.
       - /var/run/docker.sock:/var/run/docker.sock
 
+  # --- Pipeline de ingestão de documentos (contexto `rag`) ---
+  # O worker roteia cada documento para a ferramenta certa pelo seu formato.
+
+  # Apache Tika Server — extrator universal e fallback (centenas de formatos).
+  tika:
+    image: apache/tika:latest
+    container_name: gdrive-tika
+    restart: unless-stopped
+    ports:
+      - "9998:9998"
+
+  # Unstructured API — documentos ricos/semiestruturados (Office, HTML, e-mail).
+  unstructured:
+    image: downloads.unstructured.io/unstructured-io/unstructured-api:latest
+    container_name: gdrive-unstructured
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+
+  # docling-serve — especialista em PDF (layout, tabelas, ordem de leitura).
+  docling:
+    image: ghcr.io/docling-project/docling-serve:latest
+    container_name: gdrive-docling
+    restart: unless-stopped
+    environment:
+      DOCLING_SERVE_ENABLE_UI: "false"
+    ports:
+      - "5001:5001"
+
 volumes:
   gdrive_pgdata:

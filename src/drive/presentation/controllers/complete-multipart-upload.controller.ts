@@ -13,6 +13,8 @@ export interface CompleteMultipartUploadParams {
 
 export interface CompleteMultipartUploadBody {
   parts: { partNumber: number; etag: string }[];
+  /** SHA-256 (hex) do arquivo, calculado pelo cliente; opcional. */
+  contentHash?: string;
 }
 
 /**
@@ -41,6 +43,7 @@ export class CompleteMultipartUploadController {
       uploadId: request.params.uploadId,
       ownerId: request.authUser.id,
       parts: request.body.parts,
+      contentHash: request.body.contentHash,
     });
     await reply.status(200).send(output);
   }

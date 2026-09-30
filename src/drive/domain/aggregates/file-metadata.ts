@@ -1,4 +1,5 @@
 import { AggregateRoot } from "../../../shared/domain/aggregates/aggregate-root";
+import { FileCreated } from "../events/file-created.event";
 import { ContentType } from "../value-objects/content-type";
 import { FileId } from "../value-objects/file-id";
 import { FileName } from "../value-objects/file-name";
@@ -33,7 +34,11 @@ export class FileMetadata extends AggregateRoot<FileId> {
     super(id);
   }
 
-  /** Cria um novo arquivo (ex.: ao concluir um upload). */
+  /**
+   * Cria um novo arquivo (ex.: ao concluir um upload). `contentHash` é opcional
+   * e NÃO é atributo persistido do arquivo — só viaja no evento `FileCreated`,
+   * como metadado que permite à ingestão deduplicar sem reler o objeto.
+   */
   static create(props: {
     ownerId: string;
     folderId: string;
@@ -41,9 +46,10 @@ export class FileMetadata extends AggregateRoot<FileId> {
     contentType: string;
     size: number;
     storageKey: string;
+    contentHash?: string;
   }): FileMetadata {
     const now = new Date();
-    return new FileMetadata(FileId.create(), {
+    const file = new FileMetadata(FileId.create(), {
       ownerId: OwnerId.restore(props.ownerId),
       folderId: FolderId.restore(props.folderId),
       name: FileName.create(props.name),
@@ -53,6 +59,21 @@ export class FileMetadata extends AggregateRoot<FileId> {
       createdAt: now,
       updatedAt: now,
     });
+    // Anuncia o nascimento do arquivo. O contexto `rag` observa este fato e
+    // enfileira a ingestão do documento; o `drive` não conhece esse efeito.
+    file.addDomainEvent(
+      new FileCreated({
+        fileId: file.id,
+        ownerId: file.props.ownerId.value,
+        folderId: file.props.folderId.value,
+        storageKey: file.props.storageKey.value,
+        contentType: file.props.contentType.value,
+        fileName: file.props.name.value,
+        contentHash: props.contentHash,
+        occurredAt: now,
+      }),
+    );
+    return file;
   }
 
   /** Reconstrói um arquivo existente a partir da persistência. */

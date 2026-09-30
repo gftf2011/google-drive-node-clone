@@ -1,6 +1,8 @@
+import type { DomainEventPublisher } from "../../../shared/application/ports/domain-event-publisher";
 import type { UnitOfWork } from "../../../shared/application/ports/unit-of-work";
 import { FileMetadata } from "../../domain/aggregates/file-metadata";
 import { Upload } from "../../domain/aggregates/upload";
+import { FileCreated } from "../../domain/events/file-created.event";
 import { EmptyPartsError } from "../../domain/errors/empty-parts.error";
 import { InvalidPartNumberError } from "../../domain/errors/invalid-part-number.error";
 import { UploadNotFoundError } from "../../domain/errors/upload-not-found.error";
@@ -67,6 +69,13 @@ const unitOfWork: UnitOfWork = {
   runInTransaction: (work) => work(),
 };
 
+function makeEventPublisher(): DomainEventPublisher {
+  return { publishAll: jest.fn().mockResolvedValue(undefined) };
+}
+
+// Shared no-op publisher for tests that don't assert on published events.
+const eventPublisher = makeEventPublisher();
+
 describe("CompleteMultipartUpload", () => {
   it("completes the storage object and creates the file metadata", async () => {
     const upload = pendingUpload();
@@ -78,6 +87,7 @@ describe("CompleteMultipartUpload", () => {
       files,
       storage,
       unitOfWork,
+      eventPublisher,
     );
 
     const output = await useCase.execute({
@@ -94,6 +104,59 @@ describe("CompleteMultipartUpload", () => {
     expect(files.saved[0]!.storageKey.value).toBe(upload.storageKey.value);
   });
 
+  it("publishes a FileCreated event so ingestion is enqueued", async () => {
+    const upload = pendingUpload();
+    const publisher = makeEventPublisher();
+    const useCase = new CompleteMultipartUpload(
+      makeUploads(upload),
+      makeFiles(),
+      makeStorage(),
+      unitOfWork,
+      publisher,
+    );
+
+    const output = await useCase.execute({
+      uploadId: upload.id.value,
+      ownerId,
+      parts: [{ partNumber: 1, etag: "etag-1" }],
+    });
+
+    expect(publisher.publishAll).toHaveBeenCalledTimes(1);
+    const published = (publisher.publishAll as jest.Mock).mock.calls[0]![0] as
+      | FileCreated[];
+    expect(published).toHaveLength(1);
+    const event = published[0]!;
+    expect(event).toBeInstanceOf(FileCreated);
+    expect(event.eventName).toBe(FileCreated.EVENT_NAME);
+    expect(event.aggregateId).toBe(output.fileId);
+    expect(event.ownerId).toBe(ownerId);
+    expect(event.storageKey).toBe(upload.storageKey.value);
+  });
+
+  it("forwards the client-supplied contentHash on the FileCreated event", async () => {
+    const upload = pendingUpload();
+    const publisher = makeEventPublisher();
+    const useCase = new CompleteMultipartUpload(
+      makeUploads(upload),
+      makeFiles(),
+      makeStorage(),
+      unitOfWork,
+      publisher,
+    );
+    const contentHash = "b".repeat(64);
+
+    await useCase.execute({
+      uploadId: upload.id.value,
+      ownerId,
+      parts: [{ partNumber: 1, etag: "etag-1" }],
+      contentHash,
+    });
+
+    const published = (publisher.publishAll as jest.Mock).mock
+      .calls[0]![0] as FileCreated[];
+    expect(published[0]!.contentHash).toBe(contentHash);
+  });
+
   it("sorts the parts by number before completing on the storage", async () => {
     const upload = pendingUpload();
     const storage = makeStorage();
@@ -102,6 +165,7 @@ describe("CompleteMultipartUpload", () => {
       makeFiles(),
       storage,
       unitOfWork,
+      eventPublisher,
     );
 
     await useCase.execute({
@@ -129,6 +193,7 @@ describe("CompleteMultipartUpload", () => {
       makeFiles(),
       makeStorage(),
       unitOfWork,
+      eventPublisher,
     );
     await expect(
       useCase.execute({
@@ -146,6 +211,7 @@ describe("CompleteMultipartUpload", () => {
       makeFiles(),
       makeStorage(),
       unitOfWork,
+      eventPublisher,
     );
     await expect(
       useCase.execute({
@@ -164,6 +230,7 @@ describe("CompleteMultipartUpload", () => {
       makeFiles(),
       makeStorage(),
       unitOfWork,
+      eventPublisher,
     );
     await expect(
       useCase.execute({
@@ -181,6 +248,7 @@ describe("CompleteMultipartUpload", () => {
       makeFiles(),
       makeStorage(),
       unitOfWork,
+      eventPublisher,
     );
     await expect(
       useCase.execute({ uploadId: upload.id.value, ownerId, parts: [] }),
@@ -194,6 +262,7 @@ describe("CompleteMultipartUpload", () => {
       makeFiles(),
       makeStorage(),
       unitOfWork,
+      eventPublisher,
     );
     await expect(
       useCase.execute({
