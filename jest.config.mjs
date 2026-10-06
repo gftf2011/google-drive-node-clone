@@ -3,10 +3,11 @@
  * para transpilar para CommonJS). Transformação via `@swc/jest` emitindo ES
  * modules — sem `tsc`, evitando o conflito de peer do TypeScript 7.
  *
- * Três projetos, distinguidos pelo sufixo do arquivo, todos sob `src/`:
- *   - unit:        `*.spec.ts`      (puro, sem IO)
- *   - integration: `*.int.spec.ts`  (infra real via testcontainers)
- *   - e2e:         `*.e2e.spec.ts`   (rotas ponta a ponta)
+ * Quatro projetos, distinguidos pelo sufixo do arquivo, todos sob `src/`:
+ *   - unit:        `*.spec.ts`       (puro, sem IO)
+ *   - integration: `*.int.spec.ts`   (infra real via testcontainers)
+ *   - e2e:         `*.e2e.spec.ts`    (rotas ponta a ponta)
+ *   - arch:        `*.arch.spec.ts`   (regras de arquitetura via ArchUnitTS)
  *
  * Rode com `--experimental-vm-modules` (já embutido nos scripts `test*`).
  */
@@ -34,7 +35,11 @@ export default {
       ...base,
       displayName: "unit",
       testMatch: ["<rootDir>/src/**/*.spec.ts"],
-      testPathIgnorePatterns: ["\\.int\\.spec\\.ts$", "\\.e2e\\.spec\\.ts$"],
+      testPathIgnorePatterns: [
+        "\\.int\\.spec\\.ts$",
+        "\\.e2e\\.spec\\.ts$",
+        "\\.arch\\.spec\\.ts$",
+      ],
     },
     {
       ...base,
@@ -45,6 +50,11 @@ export default {
       ...base,
       displayName: "e2e",
       testMatch: ["<rootDir>/src/**/*.e2e.spec.ts"],
+    },
+    {
+      ...base,
+      displayName: "arch",
+      testMatch: ["<rootDir>/src/**/*.arch.spec.ts"],
     },
   ],
 };
